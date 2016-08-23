@@ -59,11 +59,25 @@ module sample_top #(
     parameter FAST_TRAIN = "FALSE",
     parameter FREQ_DIV   = 10_000_000 - 1
 ) (
-    input     clk_20M,
+    //input     clk_20M,
     input     clk_50M,
 
     input     sw_0,
-    input     sw_1,
+    //input     sw_1,
+
+    input     sw_ext_1,
+    input     sw_ext_2,
+    input     sw_ext_3,
+    input     sw_ext_4,
+
+    output    led_ext_1,
+    output    led_ext_2,
+    output    led_ext_3,
+    output    led_ext_4,
+    output    led_ext_5,
+    output    led_ext_6,
+    output    led_ext_7,
+    output    led_ext_8,
 
     output    led_0,
     output    led_1,
@@ -78,6 +92,7 @@ wire  led_0_n;
 wire  led_1_n;
 wire  led_2_n;
 wire  led_3_n;
+wire  led_ext_1_n;
 reg [23:0] count; //10M
 reg [1:0]  led_cnt;
 
@@ -86,25 +101,42 @@ reg [1:0]  led_cnt;
 //-------------------------------------------------------
 IBUFG u1 ( .O( clk), .I( clk_50M ) );
 
+assign sw_reset = sw_0;
+
+assign led_0_n = (led_cnt == 2'd0) ? 1'b0 : 1'b1;
+assign led_1_n = (led_cnt == 2'd1) ? 1'b0 : 1'b1;
+assign led_2_n = (led_cnt == 2'd2) ? 1'b0 : 1'b1;
+assign led_3_n = (led_cnt == 2'd3) ? 1'b0 : 1'b1;
 //-------------------------------------------------------
 // Output buffers for diagnostic LEDs
 //-------------------------------------------------------
 OBUF   led_0_obuf (.O(led_0), .I(led_0_n));
 OBUF   led_1_obuf (.O(led_1), .I(led_1_n));
 OBUF   led_2_obuf (.O(led_2), .I(led_2_n));
-OBUF   led_3_obuf (.O(led_3), .I(led_3_n) );
+OBUF   led_3_obuf (.O(led_3), .I(led_3_n));
 
+assign led_ext_1 = (led_cnt == 2'd0) ? 1'b0 : 1'bz;
+assign led_ext_2 = (led_cnt == 2'd1) ? 1'b0 : 1'bz;
+assign led_ext_3 = (led_cnt == 2'd2) ? 1'b0 : 1'bz;
+assign led_ext_4 = (led_cnt == 2'd3) ? 1'b0 : 1'bz;
+assign led_ext_5 = (led_cnt == 2'd3) ? 1'b0 : 1'bz;
+assign led_ext_6 = (led_cnt == 2'd2) ? 1'b0 : 1'bz;
+assign led_ext_7 = (led_cnt == 2'd1) ? 1'b0 : 1'bz;
+assign led_ext_8 = (led_cnt == 2'd0) ? 1'b0 : 1'bz;
+PULLUP led_ext_1_inst(led_ext_1);
+PULLUP led_ext_2_inst(led_ext_2);
+PULLUP led_ext_3_inst(led_ext_3);
+PULLUP led_ext_4_inst(led_ext_4);
+PULLUP led_ext_5_inst(led_ext_5);
+PULLUP led_ext_6_inst(led_ext_6);
+PULLUP led_ext_7_inst(led_ext_7);
+PULLUP led_ext_8_inst(led_ext_8);
 // blink_led blink_led_u1(
 //     .clk( user_clk),
 //     .rst( user_reset ),
 //     .xfer_state( s_axis_tx_last || m_axis_rx_tlast ),
 //     .led_en( xferring_flag )
 // );
-assign sw_reset = sw_0;
-assign led_0_n = (led_cnt == 2'd0) ? 1'b0 : 1'b1;
-assign led_1_n = (led_cnt == 2'd1) ? 1'b0 : 1'b1;
-assign led_2_n = (led_cnt == 2'd2) ? 1'b0 : 1'b1;
-assign led_3_n = (led_cnt == 2'd3) ? 1'b0 : 1'b1;
 
 always @(posedge clk) begin
     if (~sw_reset) begin
