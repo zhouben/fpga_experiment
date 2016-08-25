@@ -57,13 +57,20 @@
 
 module sample_top #(
     parameter FAST_TRAIN = "FALSE",
-    parameter FREQ_DIV   = 10_000_000 - 1
+    parameter FREQ_DIV   = 10_000_000 - 1,
+    parameter FREQ_DIV_I2C = 250 - 1,
+    parameter I2C_ADDRESS = 7'h29
 ) (
     //input     clk_20M,
     input     clk_50M,
 
     input     sw_0,
     //input     sw_1,
+    inout     sda,
+    input     scl,
+
+    output    sda_shadow,
+    output    scl_shadow,
 
     input     sw_ext_1,
     input     sw_ext_2,
@@ -96,6 +103,7 @@ wire  led_ext_1_n;
 reg [23:0] count; //10M
 reg [1:0]  led_cnt;
 
+reg [7:0] i2c_cnt;  // 250, 50M/250 = 200kHz
 //-------------------------------------------------------
 // Clock Input Buffer for differential system clock
 //-------------------------------------------------------
@@ -131,12 +139,6 @@ PULLUP led_ext_5_inst(led_ext_5);
 PULLUP led_ext_6_inst(led_ext_6);
 PULLUP led_ext_7_inst(led_ext_7);
 PULLUP led_ext_8_inst(led_ext_8);
-// blink_led blink_led_u1(
-//     .clk( user_clk),
-//     .rst( user_reset ),
-//     .xfer_state( s_axis_tx_last || m_axis_rx_tlast ),
-//     .led_en( xferring_flag )
-// );
 
 always @(posedge clk) begin
     if (~sw_reset) begin
@@ -153,4 +155,52 @@ always @(posedge clk) begin
         end
     end
 end
+
+always @(posedge clk) begin
+    if (~sw_reset) begin
+        i2c_cnt <= 0;
+    end
+    else begin
+        i2c_cnt <= i2c_cnt + 8'd1;
+    end
+end
+
+wire slave_write_en;
+wire slave_sda_out;
+wire slave_sda_oen;
+wire slave_scl_out;
+wire slave_scl_oen;
+wire slave_done;
+//reg [15:0] i2c_data;
+
+PULLUP pullup_i2c1(sda);
+assign sda = (slave_sda_oen) ? 1'bz : slave_sda_out;
+assign sda_shadow = sda;
+assign scl_shadow = scl;
+
+// i2c Slave
+i2c_slave #(
+    .ADDR_BYTES(1),
+    .DATA_BYTES(2)
+) i2c_slave (
+    .clk        (clk),
+    .reset      (sw_reset),
+
+    .open_drain (1'b1),
+
+    .chip_addr  (I2C_ADDRESS),
+    .reg_addr   (OPEN),
+    .data_in    (16'hBEEF),
+    .write_en   (slave_write_en),
+    .data_out   (OPEN),
+    .done       (slave_done),
+    .busy       (OPEN),
+
+    .sda_in     (sda),
+    .scl_in     (scl),
+    .sda_out    (slave_sda_out),
+    .sda_oen    (slave_sda_oen),
+    .scl_out    (slave_scl_out),
+    .scl_oen    (slave_scl_oen)
+);
 endmodule
