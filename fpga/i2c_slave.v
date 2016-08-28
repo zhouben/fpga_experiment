@@ -52,7 +52,7 @@ module i2c_slave
     reg [7:0] sr;   // Shift register
     reg [REG_DATA_WIDTH - 1:0] sr_send;
 
-    reg [1:0] reg_bytes;
+(* keep = "true" *)    reg [1:0] reg_bytes;
     reg [1:0] addr_bytes;
 
     reg [1:0] scl_count;
@@ -63,7 +63,7 @@ module i2c_slave
 
     reg rw_bit;
     reg nack;
-    reg [6:0] chip_addr_reg;
+(* keep = "true" *)    reg [6:0] chip_addr_reg;
 
     wire [7:0] word;
     wire [REG_DATA_WIDTH - 1:0] word_exp;
@@ -75,7 +75,7 @@ module i2c_slave
 
 
     // FSM state
-    (* syn_encoding = "safe" *)
+    (* syn_encoding = "default" *)
     reg [2:0] state;
 
 
@@ -95,18 +95,22 @@ module i2c_slave
     assign sda_rising  =  sda_s && ~sda_ss;
     assign sda_falling = ~sda_s &&  sda_ss;
 
+    always @(posedge clk)
+        if (~reset) chip_addr_reg <= 7'd0; //{7{1'b1}};
+        else        chip_addr_reg <= chip_addr;
+
     always @(posedge clk) begin
         if (~reset) begin
             state       <= s_idle;
             sda_reg     <= 1'b1;
             oen_reg     <= 1'b1;
 
-            reg_bytes   <= 1'b0;
+            reg_bytes   <= 2'd0;
             addr_bytes  <= 1'b0;
             sr          <= 8'h01;
 
             data_out    <= 1'b0;
-            reg_addr    <= 1'b0;
+            reg_addr    <= {REG_ADDR_WIDTH{1'b0}};
             write_en    <= 1'b0;
             rw_bit      <= 1'b0;
             sr_send     <= 1'b0;
@@ -119,14 +123,13 @@ module i2c_slave
             scl_ss        <= scl_s;
             sda_s         <= sda_in;
             sda_ss        <= sda_s;
-            chip_addr_reg <= chip_addr;
 
             if (scl_ss && sda_falling) begin
                 state       <= s_shift;
                 sda_reg     <= open_drain ? 1'b0 : 1'b1;
                 oen_reg     <= 1'b1;
 
-                reg_bytes   <= 1'b0;
+                reg_bytes   <= 2'd0;
                 addr_bytes  <= 1'b0;
                 sr          <= 8'h01;
 
@@ -146,7 +149,7 @@ module i2c_slave
                     s_idle: begin
                         sda_reg     <= open_drain ? 1'b0 : 1'b1;
                         oen_reg     <= 1'b1;
-                        reg_bytes   <= 1'b0;
+                        reg_bytes   <= 2'd0;
                         addr_bytes  <= 1'b0;
                         sr          <= 8'h01;
                         write_en    <= 1'b0;
@@ -186,14 +189,14 @@ module i2c_slave
                                 else begin
                                     data_out <= (data_out << 8) | word_exp;
 
-                                    if (reg_bytes == DATA_BYTES - 1'b1) begin
+                                    if (reg_bytes == DATA_BYTES[1:0] - 2'd1) begin
                                         state      <= s_write;
                                         write_en   <= 1'b1;
-                                        reg_bytes  <= reg_bytes + 1'b1 - DATA_BYTES;
+                                        reg_bytes  <= reg_bytes + 2'd1 - DATA_BYTES[1:0];
                                     end
                                     else begin
                                         state      <= s_ack;
-                                        reg_bytes  <= reg_bytes + 1'b1;
+                                        reg_bytes  <= reg_bytes + 2'd1;
                                     end
                                 end
                             end
@@ -216,11 +219,11 @@ module i2c_slave
                                 state     <= s_chk_ack;
                                 sda_reg   <= open_drain ? 1'b0 : 1'b1;
                                 oen_reg   <= 1'b1;
-                                reg_bytes <= reg_bytes + 1'b1;
+                                reg_bytes <= reg_bytes + 2'd1;
 
-                                if (reg_bytes == DATA_BYTES - 1'b1) begin
+                                if (reg_bytes == DATA_BYTES[1:0] - 1'd1) begin
                                     reg_addr  <= reg_addr + 1'b1;
-                                    reg_bytes <= 1'b0;
+                                    reg_bytes <= 2'd0;
                                 end
                             end
                             else begin
@@ -239,7 +242,7 @@ module i2c_slave
                             sda_reg <= 1'b0;
                             oen_reg <= 1'b0;
 
-                            if (rw_bit && (reg_bytes == 0)) begin
+                            if (rw_bit && (reg_bytes == 2'd0)) begin
                                 sr_send <= data_in;
                             end
                         end
