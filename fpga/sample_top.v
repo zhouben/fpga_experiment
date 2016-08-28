@@ -66,8 +66,8 @@ module sample_top #(
 
     input     sw_0,
     //input     sw_1,
-    inout     sda,
     input     scl,
+    inout     sda,
 
     output    sda_shadow,
     output    scl_shadow,
@@ -99,27 +99,39 @@ wire  led_0_n;
 wire  led_1_n;
 wire  led_2_n;
 wire  led_3_n;
-wire  led_ext_1_n;
-reg [23:0] count; //10M
-reg [1:0]  led_cnt;
+
+wire slave_write_en;
+wire slave_sda_out;
+wire slave_sda_oen;
+wire slave_scl_out;
+wire slave_scl_oen;
+wire slave_done;
+wire slave_busy;
+
+wire ram_ena;
+wire ram_wea;
+wire [2:0] ram_addra;
+wire [7:0] ram_dina;
+wire [7:0] ram_douta;
 
 wire [35:0] CONTROL0;
 wire [35:0] CONTROL1;
 wire [ 7:0] ASYNC_IN;
 wire [ 2:0] ASYNC_OUT;
-wire [ 7:0] TRIG0;
+wire [ 3:0] ila_trig0;
+wire [31:0] ila_data;
+
+(* keep="true" *) wire [7:0] i2c_reg_addr;
+(* keep="true" *) wire [7:0] slave_data_out;
+
+reg [23:0] count; //10M
+reg [1:0]  led_cnt;
+
 //-------------------------------------------------------
 // Clock Input Buffer for differential system clock
 //-------------------------------------------------------
 IBUFG u1 ( .O( clk), .I( clk_50M ) );
 
-//assign sw_reset = sw_0;
-assign sw_reset = sw_0 & ASYNC_OUT[0];
-
-assign led_0_n = (led_cnt == 2'd0) ? 1'b0 : 1'b1;
-assign led_1_n = (led_cnt == 2'd1) ? 1'b0 : 1'b1;
-assign led_2_n = (led_cnt == 2'd2) ? 1'b0 : 1'b1;
-assign led_3_n = (led_cnt == 2'd3) ? 1'b0 : 1'b1;
 //-------------------------------------------------------
 // Output buffers for diagnostic LEDs
 //-------------------------------------------------------
@@ -127,18 +139,6 @@ OBUF   led_0_obuf (.O(led_0), .I(led_0_n));
 OBUF   led_1_obuf (.O(led_1), .I(led_1_n));
 OBUF   led_2_obuf (.O(led_2), .I(led_2_n));
 OBUF   led_3_obuf (.O(led_3), .I(led_3_n));
-
-assign led_ext_1 = (sw_ext_1) ? 1'bz : 1'b0;
-assign led_ext_2 = (sw_ext_2) ? 1'bz : 1'b0;
-assign led_ext_3 = (sw_ext_3) ? 1'bz : 1'b0;
-assign led_ext_4 = (sw_ext_4) ? 1'bz : 1'b0;
-
-assign led_ext_5 = (led_cnt == 2'd3) ? 1'b0 : 1'bz;
-assign led_ext_6 = (led_cnt == 2'd2) ? 1'b0 : 1'bz;
-//assign led_ext_7 = (led_cnt == 2'd1) ? 1'b0 : 1'bz;
-//assign led_ext_8 = (led_cnt == 2'd0) ? 1'b0 : 1'bz;
-assign led_ext_7 = (ASYNC_OUT[0]) ? 1'b0 : 1'bz;
-assign led_ext_8 = (ASYNC_OUT[1]) ? 1'b0 : 1'bz;
 
 PULLUP led_ext_1_inst(led_ext_1);
 PULLUP led_ext_2_inst(led_ext_2);
@@ -149,47 +149,12 @@ PULLUP led_ext_6_inst(led_ext_6);
 PULLUP led_ext_7_inst(led_ext_7);
 PULLUP led_ext_8_inst(led_ext_8);
 
-always @(posedge clk) begin
-    if (~sw_reset)              count <= 0;
-    else if (count == FREQ_DIV) count <= 0;
-    else                        count <= count + 24'd1;
-end
-
-always @(posedge clk) begin
-    if (~sw_reset)              led_cnt <= 0;
-    else if (count == FREQ_DIV) led_cnt <= led_cnt + 2'd1;
-end
-
-wire slave_write_en;
-wire slave_sda_out;
-wire slave_sda_oen;
-wire slave_scl_out;
-wire slave_scl_oen;
-wire slave_done;
-//reg [15:0] i2c_data;
-
 PULLUP pullup_i2c1(sda);
-assign sda = (slave_sda_oen) ? 1'bz : slave_sda_out;
-assign sda_shadow = sda;
-assign scl_shadow = scl;
-
-assign TRIG0[7] = slave_done;
-assign TRIG0[6] = slave_sda_out;
-assign TRIG0[5] = slave_sda_out;
-assign TRIG0[4] = slave_scl_out;
-assign TRIG0[3] = slave_scl_oen;
-assign TRIG0[2] = slave_write_en;
-assign TRIG0[1] = count[1];
-assign TRIG0[0] = count[0];
-
-(* keep="true" *) wire [7:0] i2c_reg_addr;
-(* keep="true" *) wire [15:0] i2c_data_out;
-assign ASYNC_IN = i2c_data_out[7:0];
 
 // i2c Slave
 i2c_slave #(
     .ADDR_BYTES(1),
-    .DATA_BYTES(2)
+    .DATA_BYTES(1)
 ) i2c_slave (
     .clk        (clk),
     .reset      (sw_reset),
@@ -198,11 +163,11 @@ i2c_slave #(
 
     .chip_addr  (I2C_ADDRESS),
     .reg_addr   (i2c_reg_addr),
-    .data_in    (16'hBEEF),
+    .data_in    (8'hAB),
     .write_en   (slave_write_en),
-    .data_out   (i2c_data_out),
+    .data_out   (slave_data_out),
     .done       (slave_done),
-    .busy       (),
+    .busy       (slave_busy),
 
     .sda_in     (sda),
     .scl_in     (scl),
@@ -224,6 +189,70 @@ my_vio my_vio_inst (
 my_ila my_ila_inst (
     .CONTROL(CONTROL1), // INOUT BUS [35:0]
     .CLK(clk), // IN
-    .TRIG0(TRIG0) // IN BUS [7:0]
+    .DATA(ila_data), // IN BUS [31:0]
+    .TRIG0(ila_trig0) // IN BUS [3:0]
 );
+my_ram my_ram_inst (
+  .clka(clk), // input clka
+  .ena(ram_ena), // input ena
+  .wea(ram_wea), // input [0 : 0] wea
+  .addra(ram_addra), // input [2 : 0] addra
+  .dina(ram_dina), // input [7 : 0] dina
+  .douta(ram_douta) // output [7 : 0] douta
+);
+
+always @(posedge clk) begin
+    if (~sw_reset)              count <= 0;
+    else if (count == FREQ_DIV) count <= 0;
+    else                        count <= count + 24'd1;
+end
+
+always @(posedge clk) begin
+    if (~sw_reset)              led_cnt <= 0;
+    else if (count == FREQ_DIV) led_cnt <= led_cnt + 2'd1;
+end
+
+assign sw_reset = sw_0 & ASYNC_OUT[0];
+assign led_0_n = (led_cnt == 2'd0) ? 1'b0 : 1'b1;
+assign led_1_n = (led_cnt == 2'd1) ? 1'b0 : 1'b1;
+assign led_2_n = (led_cnt == 2'd2) ? 1'b0 : 1'b1;
+assign led_3_n = (led_cnt == 2'd3) ? 1'b0 : 1'b1;
+assign led_ext_1 = (sw_ext_1) ? 1'bz : 1'b0;
+assign led_ext_2 = (sw_ext_2) ? 1'bz : 1'b0;
+assign led_ext_3 = (sw_ext_3) ? 1'bz : 1'b0;
+assign led_ext_4 = (sw_ext_4) ? 1'bz : 1'b0;
+
+assign led_ext_5 = (led_cnt == 2'd3) ? 1'b0 : 1'bz;
+assign led_ext_6 = (led_cnt == 2'd2) ? 1'b0 : 1'bz;
+//assign led_ext_7 = (led_cnt == 2'd1) ? 1'b0 : 1'bz;
+//assign led_ext_8 = (led_cnt == 2'd0) ? 1'b0 : 1'bz;
+assign led_ext_7 = (ASYNC_OUT[1]) ? 1'b0 : 1'bz;
+assign led_ext_8 = (ASYNC_OUT[2]) ? 1'b0 : 1'bz;
+
+assign ram_ena = slave_write_en;
+assign ram_wea = slave_write_en;
+assign ram_addra = 3'd0;
+assign ram_dina  = slave_data_out;
+
+assign sda = (slave_sda_oen) ? 1'bz : slave_sda_out;
+assign sda_shadow = sda;
+assign scl_shadow = scl;
+//assign ila_trig0[0] = sda;
+assign ila_trig0[3:0] = count[3:0];
+assign ila_data[31  ] = clk;
+assign ila_data[30:25] = count[5:0];
+assign ila_data[24:8] = {
+    scl,
+    scl,
+    slave_write_en,
+    slave_done,
+    slave_busy,
+    slave_sda_out,
+    slave_sda_oen,
+    slave_scl_out,
+    slave_scl_oen,
+    slave_data_out};
+
+assign ila_data[ 7:0] = ram_douta;
+assign ASYNC_IN = ram_douta;
 endmodule

@@ -7,25 +7,27 @@
 // /___/  \  /    Vendor     : Xilinx
 // \   \   \/     Version    : 14.7
 //  \   \         Application: Xilinx CORE Generator
-//  /   /         Filename   : my_ila.veo
+//  /   /         Filename   : my_ila.v
 // /___/   /\     Timestamp  : Sun Aug 28 22:53:56 中国标准时间 2016
 // \   \  /  \
 //  \___\/\___\
 //
-// Design Name: ISE Instantiation template
+// Design Name: Verilog Synthesis Wrapper
 ///////////////////////////////////////////////////////////////////////////////
+// This wrapper is used to integrate with Project Navigator and PlanAhead
 
-// The following must be inserted into your Verilog file for this
-// core to be instantiated. Change the instance name and port connections
-// (in parentheses) to your own signal names.
+`timescale 1ns/1ps
 
-//----------- Begin Cut here for INSTANTIATION Template ---// INST_TAG
-my_ila YourInstanceName (
-    .CONTROL(CONTROL), // INOUT BUS [35:0]
-    .CLK(CLK), // IN
-    .DATA(DATA), // IN BUS [31:0]
-    .TRIG0(TRIG0) // IN BUS [3:0]
-);
+module my_ila(
+    CONTROL,
+    CLK,
+    DATA,
+    TRIG0) /* synthesis syn_black_box syn_noprune=1 */;
 
-// INST_TAG_END ------ End INSTANTIATION Template ---------
 
+inout [35 : 0] CONTROL;
+input CLK;
+input [31 : 0] DATA;
+input [3 : 0] TRIG0;
+
+endmodule
