@@ -189,7 +189,7 @@ module i2c_slave
                                 else begin
                                     data_out <= (data_out << 8) | word_exp;
 
-                                    if (reg_bytes == DATA_BYTES[1:0] - 2'd1) begin
+                                    if (reg_bytes == (DATA_BYTES[1:0] - 2'd1)) begin
                                         state      <= s_write;
                                         write_en   <= 1'b1;
                                         reg_bytes  <= reg_bytes + 2'd1 - DATA_BYTES[1:0];

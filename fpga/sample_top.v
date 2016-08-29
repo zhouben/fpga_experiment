@@ -121,7 +121,7 @@ wire [ 2:0] ASYNC_OUT;
 wire [ 3:0] ila_trig0;
 wire [31:0] ila_data;
 
-(* keep="true" *) wire [7:0] i2c_reg_addr;
+(* keep="true" *) wire [7:0] slave_reg_addr;
 (* keep="true" *) wire [7:0] slave_data_out;
 
 reg [23:0] count; //10M
@@ -162,7 +162,7 @@ i2c_slave #(
     .open_drain (1'b1),
 
     .chip_addr  (I2C_ADDRESS),
-    .reg_addr   (i2c_reg_addr),
+    .reg_addr   (slave_reg_addr),
     .data_in    (8'hAB),
     .write_en   (slave_write_en),
     .data_out   (slave_data_out),
@@ -229,9 +229,9 @@ assign led_ext_6 = (led_cnt == 2'd2) ? 1'b0 : 1'bz;
 assign led_ext_7 = (ASYNC_OUT[1]) ? 1'b0 : 1'bz;
 assign led_ext_8 = (ASYNC_OUT[2]) ? 1'b0 : 1'bz;
 
-assign ram_ena = slave_write_en;
+assign ram_ena = slave_busy;
 assign ram_wea = slave_write_en;
-assign ram_addra = 3'd0;
+assign ram_addra = slave_reg_addr;
 assign ram_dina  = slave_data_out;
 
 assign sda = (slave_sda_oen) ? 1'bz : slave_sda_out;
