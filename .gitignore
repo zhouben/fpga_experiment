@@ -1,4 +1,7 @@
-/*
+/fpga/ipcore_dir/*
+/fpga/ISEPrj/*
+/fpga/modelprj/work/*
+tags
 !*.v
 !*.ucf
 !*.xise
