@@ -121,6 +121,9 @@ initial begin
     reset <= 1'b1;
 
     $display("Beginning write/read tests");
+    //read_txt_file();
+    //read_mem_file();
+
 
     #60
     write_i2c_slave(CHIP_ADDR, 8'h5B, 8'h25);
@@ -173,7 +176,6 @@ task write_read;
     end
 endtask
 
-*/
 
 always @ (posedge clock) begin
     if (~reset)                     i2c_cnt <= 0;
@@ -185,70 +187,19 @@ always @ (posedge clock) begin
     if (~reset)                     i2c_cycle <= 1;
     else if ((i2c_cnt == I2C_DIV) && (i2c_oe == 1))  i2c_cycle <= ~i2c_cycle;
 end
+*/
 
-task write_i2c_slave;
-    input [6:0]  chip_addr;
-    input [7:0]  reg_addr;
+reg [7:0] data_r[0:255];
+initial $readmemh("data_in.txt", data_r );
+
+// write one data and wait for slave ACK/NAK
+task write_one_byte;
     input [7:0] data;
+    input [8*10:1] str;
     integer i;
-    integer state;
     reg ack_from_slave;
-    reg [7:0] chip_addr_wr;
-
     begin
-
-        master_sda_oen = 1'b1;
-        master_scl_oen = 1'b1; 
-        chip_addr_wr = {chip_addr, 1'b0};
-
-        // start signal
-        #I2C_HIGH_CYCLE master_sda_oen = 1'b0;
-        #I2C_HIGH_CYCLE master_scl_oen = 1'b0;
-
-        // write chip address
-        for(i = 0; i < 8; i = i + 1) begin
-            #I2C_DIV master_sda_oen = chip_addr_wr[ 7 - i];
-            #I2C_LOW_CYCLE master_scl_oen = 1'b1;
-            #I2C_HIGH_CYCLE master_scl_oen = 1'b0;
-        end
-        #I2C_DIV master_sda_oen = 1'b1;
-
-        // write bit
-//        #I2C_DIV master_sda_oen = 1'b0;
-//        #I2C_LOW_CYCLE master_scl_oen = 1'b1;
-//        #I2C_HIGH_CYCLE master_scl_oen = 1'b0;
-//        #I2C_DIV master_sda_oen = 1'b1;
-
-        // receive ACK/NAK from slave
-        #I2C_LOW_CYCLE master_scl_oen = 1'b1;
-        ack_from_slave = SDA;
-        if (ack_from_slave == 0)
-            $display("Slave acknowledge for chip_addr");
-        else begin
-            $display("Slave NAK for chip_addr!");
-            $stop;
-        end
-        #I2C_HIGH_CYCLE master_scl_oen = 1'b0;
-
-        // write reg address
-        for(i = 0; i < 8; i = i + 1) begin
-            #I2C_DIV master_sda_oen = reg_addr[ 7 - i];
-            #I2C_LOW_CYCLE master_scl_oen = 1'b1;
-            #I2C_HIGH_CYCLE master_scl_oen = 1'b0;
-        end
-        #I2C_DIV master_sda_oen = 1'b1;
-
-        #I2C_LOW_CYCLE master_scl_oen = 1'b1;
-        ack_from_slave = SDA;
-        if (ack_from_slave == 0)
-            $display("Slave acknowledge for reg_addr");
-        else begin
-            $display("Slave NAK for reg_addr!");
-            $stop;
-        end
-        #I2C_HIGH_CYCLE master_scl_oen = 1'b0;
-
-        // write data
+        // write chip address and wr bit
         for(i = 0; i < 8; i = i + 1) begin
             #I2C_DIV master_sda_oen = data[ 7 - i];
             #I2C_LOW_CYCLE master_scl_oen = 1'b1;
@@ -256,15 +207,37 @@ task write_i2c_slave;
         end
         #I2C_DIV master_sda_oen = 1'b1;
 
+        // receive ACK/NAK from slave
         #I2C_LOW_CYCLE master_scl_oen = 1'b1;
         ack_from_slave = SDA;
-        if (ack_from_slave == 0)
-            $display("Slave acknowledge for data");
-        else begin
-            $display("Slave NAK for data!");
+        if (ack_from_slave == 0) begin
+            $display("[%t] Slave ACK for %s", $realtime, str);
+        end else begin
+            $display("[%t] Slave NAK for %s!", $realtime, str);
             $stop;
-        end
-        #I2C_DIV master_scl_oen = 1'b0;
+    end
+    #I2C_HIGH_CYCLE master_scl_oen = 1'b0;
+end
+endtask
+
+task write_i2c_slave;
+    input [6:0]  chip_addr;
+    input [7:0]  reg_addr;
+    input [7:0] data;
+
+    begin
+
+        master_sda_oen = 1'b1;
+        master_scl_oen = 1'b1; 
+
+        // start signal
+        #I2C_HIGH_CYCLE master_sda_oen = 1'b0;
+        #I2C_HIGH_CYCLE master_scl_oen = 1'b0;
+
+        write_one_byte({chip_addr, 1'b0}, "chip_addr");
+        write_one_byte(reg_addr, "reg_addr");
+        write_one_byte(data, "data");
+        write_one_byte(data + 1, "data");
 
         // stop signal
         master_sda_oen = 1'b0;
@@ -273,6 +246,36 @@ task write_i2c_slave;
     end
 endtask
 
+task read_txt_file;
+    integer line;
+    integer fp_r;
+    integer count;
+    reg [7:0] data_r;
+
+    begin
+        fp_r = $fopen("data_in.txt", "r");
+        $display("fp_r %d", fp_r);
+        line = 1;
+        if (fp_r) begin
+            while(!$feof(fp_r)) begin
+                count = $fscanf(fp_r, "%d", data_r);
+                $display("%d: %d", line, data_r);
+                line = line + 1;
+            end
+            $fclose(fp_r);
+        end
+    end
+endtask
+
+task read_mem_file;
+    integer i;
+    begin
+        for( i = 0; i < 16; i = i + 1)
+        begin
+            $display("%d: %d", i, data_r[i]);
+        end
+    end
+endtask
 /*
 task read_i2c;
     input [6:0] chip_addr;
