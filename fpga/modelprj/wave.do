@@ -3,7 +3,7 @@ quietly WaveActivateNextPane {} 0
 add wave -noupdate /i2c_tb/my_ram_inst/addra
 add wave -noupdate /i2c_tb/my_ram_inst/clka
 add wave -noupdate -radix hexadecimal /i2c_tb/my_ram_inst/dina
-add wave -noupdate /i2c_tb/my_ram_inst/douta
+add wave -noupdate -radix hexadecimal /i2c_tb/my_ram_inst/douta
 add wave -noupdate /i2c_tb/my_ram_inst/ena
 add wave -noupdate /i2c_tb/my_ram_inst/wea
 add wave -noupdate /i2c_tb/SCL
@@ -33,7 +33,7 @@ add wave -noupdate -radix hexadecimal /i2c_tb/i2c_slave/data_in
 add wave -noupdate -radix hexadecimal /i2c_tb/i2c_slave/data_out
 add wave -noupdate -radix hexadecimal /i2c_tb/i2c_slave/reg_addr
 TreeUpdate [SetDefaultTree]
-WaveRestoreCursors {{Cursor 1} {17010 ns} 0}
+WaveRestoreCursors {{Cursor 1} {29530 ns} 0}
 configure wave -namecolwidth 235
 configure wave -valuecolwidth 100
 configure wave -justifyvalue left
@@ -48,4 +48,4 @@ configure wave -griddelta 40
 configure wave -timeline 0
 configure wave -timelineunits ns
 update
-WaveRestoreZoom {16820 ns} {17122 ns}
+WaveRestoreZoom {0 ns} {45424 ns}
