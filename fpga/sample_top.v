@@ -163,7 +163,7 @@ i2c_slave #(
 
     .chip_addr  (I2C_ADDRESS),
     .reg_addr   (slave_reg_addr),
-    .data_in    (8'hAB),
+    .data_in    (ram_douta),
     .write_en   (slave_write_en),
     .data_out   (slave_data_out),
     .done       (slave_done),
@@ -212,7 +212,8 @@ always @(posedge clk) begin
     else if (count == FREQ_DIV) led_cnt <= led_cnt + 2'd1;
 end
 
-assign sw_reset = sw_0 & ASYNC_OUT[0];
+//assign sw_reset = sw_0 & ASYNC_OUT[0];
+assign sw_reset = sw_0;
 assign led_0_n = (led_cnt == 2'd0) ? 1'b0 : 1'b1;
 assign led_1_n = (led_cnt == 2'd1) ? 1'b0 : 1'b1;
 assign led_2_n = (led_cnt == 2'd2) ? 1'b0 : 1'b1;
