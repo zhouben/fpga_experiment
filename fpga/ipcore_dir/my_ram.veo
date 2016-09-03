@@ -51,7 +51,7 @@ my_ram your_instance_name (
   .clka(clka), // input clka
   .ena(ena), // input ena
   .wea(wea), // input [0 : 0] wea
-  .addra(addra), // input [2 : 0] addra
+  .addra(addra), // input [7 : 0] addra
   .dina(dina), // input [7 : 0] dina
   .douta(douta) // output [7 : 0] douta
 );

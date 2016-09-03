@@ -272,6 +272,9 @@ module i2c_slave
 
                         if (scl_rising) begin
                             nack <= sda_s;
+                            if(rw_bit && reg_bytes == 2'd0) begin
+                                sr_send <= data_in;
+                            end
                         end
 
                         if (scl_falling) begin

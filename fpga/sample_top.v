@@ -53,7 +53,7 @@
 //
 //-----------------------------------------------------------------------------
 
-`timescale 1ns / 1ps
+`timescale 1ns / 100ps
 
 module sample_top #(
     parameter FAST_TRAIN = "FALSE",
@@ -110,7 +110,7 @@ wire slave_busy;
 
 wire ram_ena;
 wire ram_wea;
-wire [2:0] ram_addra;
+wire [7:0] ram_addra;
 wire [7:0] ram_dina;
 wire [7:0] ram_douta;
 
@@ -196,7 +196,7 @@ my_ram my_ram_inst (
   .clka(clk), // input clka
   .ena(ram_ena), // input ena
   .wea(ram_wea), // input [0 : 0] wea
-  .addra(ram_addra), // input [2 : 0] addra
+  .addra(ram_addra), // input [7 : 0] addra
   .dina(ram_dina), // input [7 : 0] dina
   .douta(ram_douta) // output [7 : 0] douta
 );
