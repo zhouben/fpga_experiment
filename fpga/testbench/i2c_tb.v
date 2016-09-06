@@ -134,10 +134,10 @@ initial begin
     $display("Beginning write/read tests");
 
     #60
-    write_i2c_slave(CHIP_ADDR, 8'h00, master_send_data[0]);
-    read_i2c_slave (CHIP_ADDR, 8'h00, master_recv_data[0]);
-    $display("[%t] send %x, received %x", $realtime, master_send_data[0], master_recv_data[0]);
-    write_i2c_multiple(CHIP_ADDR, 8'h00, 32);
+    //   write_i2c_slave(CHIP_ADDR, 8'h00, master_send_data[0]);
+    //   read_i2c_slave (CHIP_ADDR, 8'h00, master_recv_data[0]);
+    //   $display("[%t] send %x, received %x", $realtime, master_send_data[0], master_recv_data[0]);
+    //   write_i2c_multiple(CHIP_ADDR, 8'h00, 32);
     read_i2c_multiple(CHIP_ADDR, 8'h00, 32);
     /*
     #100 write_read(CHIP_ADDR, 8'h00, 16'hCAFE);
@@ -346,7 +346,7 @@ task read_i2c_multiple;
         #I2C_HIGH_CYCLE master_sda_oen = 1'b1;
 
         for(i = 0; i < siz - 1; i = i + 1) begin
-            $display("[%2d]: send %d recv %d", i, master_send_data[i], master_recv_data[i]);
+            $display("[%2d]: send %d recv %x", i, master_send_data[i], master_recv_data[i]);
         end
     end
 endtask

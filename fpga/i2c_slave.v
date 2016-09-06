@@ -73,7 +73,6 @@ module i2c_slave
     reg  sda_s, scl_s, sda_ss, scl_ss;
     wire scl_rising, scl_falling, sda_rising, sda_falling;
 
-
     // FSM state
     (* syn_encoding = "default" *)
     reg [2:0] state;

@@ -111,13 +111,16 @@ NET led_ext_7      		LOC =B18 | IOSTANDARD = LVCMOS33; # P1C3_P LED7
 NET led_ext_8      		LOC =A18 | IOSTANDARD = LVCMOS33; # P1C3_N LED8
 
 #NET sda             LOC = W17 |IOSTANDARD = LVCMOS33; # P2A0_P
-NET sda             LOC = AA18 |IOSTANDARD = LVCMOS33; # P2A1_P
+NET sda_as_slave             LOC = AA18 |IOSTANDARD = LVCMOS33; # P2A1_P
 #NET scl             LOC = Y17 |IOSTANDARD = LVCMOS33; # P2A2_P
-NET scl             LOC = W17 |IOSTANDARD = LVCMOS33; # P2A0_P
+NET scl_as_slave             LOC = W17 |IOSTANDARD = LVCMOS33; # P2A0_P
 #NET sda_shadow      LOC = Y16 |IOSTANDARD = LVCMOS33; # P2A4_P
 NET sda_shadow      LOC = Y17 |IOSTANDARD = LVCMOS33; # P2A2_P
 #NET scl_shadow      LOC = T15 |IOSTANDARD = LVCMOS33; # P2A6_P
 NET scl_shadow      LOC = U16 |IOSTANDARD = LVCMOS33; # P2A3_P
+
+NET sda_as_master             LOC = Y16 |IOSTANDARD = LVCMOS33; # P2A4_P
+NET scl_as_master             LOC = AA16 |IOSTANDARD = LVCMOS33; # P2A5_P
 
 # SYS clock 100 or 125 MHz (input) signal. The sys_clk_p and sys_clk_n
 # signals are the PCI Express reference clock. Spartan-6 GTP

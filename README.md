@@ -8,3 +8,4 @@ PCIe transfer experiment on MARS6 FPGA.
 1. add icon, ila and vio for debug.
 1. implement I2C slave on FPGA and communicate, as a memory I2C slave, with Raspberry Pi, Read/Write ok.
 1. add python scripts to control OLED display. Work well on Raspberry Pi.
+1. configure OLED display by I2C passed on test bench.

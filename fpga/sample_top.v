@@ -58,16 +58,18 @@
 module sample_top #(
     parameter FAST_TRAIN = "FALSE",
     parameter FREQ_DIV   = 10_000_000 - 1,
-    parameter FREQ_DIV_I2C = 250 - 1,
+    parameter FREQ_DIV_I2C = 12'd249,
     parameter I2C_ADDRESS = 7'h2F
 ) (
     //input     clk_20M,
     input     clk_50M,
 
     input     sw_0,
-    //input     sw_1,
-    input     scl,
-    inout     sda,
+    input     scl_as_slave,
+    inout     sda_as_slave,
+    
+    inout     sda_as_master,
+    output    scl_as_master,
 
     output    sda_shadow,
     output    scl_shadow,
@@ -100,7 +102,15 @@ wire  led_1_n;
 wire  led_2_n;
 wire  led_3_n;
 
-wire slave_write_en;
+wire master_reg_addr;
+wire master_write_en;
+wire master_sda_out;
+wire master_sda_oen;
+wire master_scl_out;
+wire master_scl_oen;
+wire master_busy;
+
+wire slave_reg_addr;
 wire slave_sda_out;
 wire slave_sda_oen;
 wire slave_scl_out;
@@ -120,9 +130,6 @@ wire [ 7:0] ASYNC_IN;
 wire [ 2:0] ASYNC_OUT;
 wire [ 3:0] ila_trig0;
 wire [31:0] ila_data;
-
-(* keep="true" *) wire [7:0] slave_reg_addr;
-(* keep="true" *) wire [7:0] slave_data_out;
 
 reg [23:0] count; //10M
 reg [1:0]  led_cnt;
@@ -149,7 +156,27 @@ PULLUP led_ext_6_inst(led_ext_6);
 PULLUP led_ext_7_inst(led_ext_7);
 PULLUP led_ext_8_inst(led_ext_8);
 
-PULLUP pullup_i2c1(sda);
+PULLUP pullup_i2c1(sda_as_slave);
+PULLUP pullup_i2c2(sda_as_master);
+
+oled_ctrl u_oled
+(
+    .clk(clk),        // System Clock
+    .reset(sw_reset),      // Reset signal
+    .sda_in(sda_as_master),    // SDA Input
+    .sda_out(master_sda_out),   // SDA Output
+    .sda_oen(master_sda_oen),   // SDA Output Enable
+    .scl_out(master_scl_out),   // SCL Output
+    .scl_oen(master_scl_oen),   // SCL Output Enable
+
+    .config_reg_read_en(master_busy),
+    .config_reg_addr(master_reg_addr),
+    .config_data(ram_douta),
+    .init(sw_ext_1),
+    .all_black_disp(sw_ext_2),
+    .all_white_disp(sw_ext_3),
+    .interlace_disp(sw_ext_4)
+);
 
 // i2c Slave
 i2c_slave #(
@@ -164,13 +191,13 @@ i2c_slave #(
     .chip_addr  (I2C_ADDRESS),
     .reg_addr   (slave_reg_addr),
     .data_in    (ram_douta),
-    .write_en   (slave_write_en),
-    .data_out   (slave_data_out),
+    .write_en   (ram_wea),
+    .data_out   (ram_dina),
     .done       (slave_done),
     .busy       (slave_busy),
 
-    .sda_in     (sda),
-    .scl_in     (scl),
+    .sda_in     (sda_as_slave),
+    .scl_in     (scl_as_slave),
     .sda_out    (slave_sda_out),
     .sda_oen    (slave_sda_oen),
     .scl_out    (slave_scl_out),
@@ -230,29 +257,30 @@ assign led_ext_6 = (led_cnt == 2'd2) ? 1'b0 : 1'bz;
 assign led_ext_7 = (ASYNC_OUT[1]) ? 1'b0 : 1'bz;
 assign led_ext_8 = (ASYNC_OUT[2]) ? 1'b0 : 1'bz;
 
-assign ram_ena = slave_busy;
-assign ram_wea = slave_write_en;
-assign ram_addra = slave_reg_addr;
-assign ram_dina  = slave_data_out;
+assign ram_ena = slave_busy | master_busy;
+assign ram_addra = master_busy ? master_reg_addr : slave_reg_addr;
 
-assign sda = (slave_sda_oen) ? 1'bz : slave_sda_out;
-assign sda_shadow = sda;
-assign scl_shadow = scl;
-//assign ila_trig0[0] = sda;
+assign sda_as_master = (master_sda_oen) ? 1'bz : master_sda_out;
+assign scl_as_master = (master_scl_oen) ? 1'bz : master_scl_out;
+
+assign sda_as_slave = (slave_sda_oen) ? 1'bz : slave_sda_out;
+assign sda_shadow = sda_as_slave;
+assign scl_shadow = scl_as_slave;
+
 assign ila_trig0[3:0] = count[3:0];
 assign ila_data[31  ] = clk;
 assign ila_data[30:25] = count[5:0];
 assign ila_data[24:8] = {
-    scl,
-    scl,
-    slave_write_en,
+    scl_as_slave,
+    scl_as_slave,
+    ram_wea,
     slave_done,
     slave_busy,
     slave_sda_out,
     slave_sda_oen,
     slave_scl_out,
     slave_scl_oen,
-    slave_data_out};
+    ram_dina};
 
 assign ila_data[ 7:0] = ram_douta;
 assign ASYNC_IN = ram_douta;
