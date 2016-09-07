@@ -69,7 +69,7 @@ module sample_top #(
     inout     sda_as_slave,
     
     inout     sda_as_master,
-    output    scl_as_master,
+    inout     scl_as_master,
 
     output    sda_shadow,
     output    scl_shadow,
@@ -102,15 +102,15 @@ wire  led_1_n;
 wire  led_2_n;
 wire  led_3_n;
 
-wire master_reg_addr;
+wire [4:0] master_reg_addr;
 wire master_write_en;
 wire master_sda_out;
 wire master_sda_oen;
 wire master_scl_out;
 wire master_scl_oen;
-wire master_busy;
+wire master_read_ram_en;
 
-wire slave_reg_addr;
+wire [7:0] slave_reg_addr;
 wire slave_sda_out;
 wire slave_sda_oen;
 wire slave_scl_out;
@@ -158,6 +158,7 @@ PULLUP led_ext_8_inst(led_ext_8);
 
 PULLUP pullup_i2c1(sda_as_slave);
 PULLUP pullup_i2c2(sda_as_master);
+PULLUP pullup_i2c3(scl_as_master);
 
 oled_ctrl u_oled
 (
@@ -166,12 +167,15 @@ oled_ctrl u_oled
     .sda_in(sda_as_master),    // SDA Input
     .sda_out(master_sda_out),   // SDA Output
     .sda_oen(master_sda_oen),   // SDA Output Enable
+    .scl_in(scl_as_master),
     .scl_out(master_scl_out),   // SCL Output
     .scl_oen(master_scl_oen),   // SCL Output Enable
+    .busy(),
+    .done(),
 
-    .config_reg_read_en(master_busy),
+    .config_reg_read_en(master_read_ram_en),
     .config_reg_addr(master_reg_addr),
-    .config_data(ram_douta),
+    .config_reg_data(ram_douta),
     .init(sw_ext_1),
     .all_black_disp(sw_ext_2),
     .all_white_disp(sw_ext_3),
@@ -257,15 +261,15 @@ assign led_ext_6 = (led_cnt == 2'd2) ? 1'b0 : 1'bz;
 assign led_ext_7 = (ASYNC_OUT[1]) ? 1'b0 : 1'bz;
 assign led_ext_8 = (ASYNC_OUT[2]) ? 1'b0 : 1'bz;
 
-assign ram_ena = slave_busy | master_busy;
-assign ram_addra = master_busy ? master_reg_addr : slave_reg_addr;
+assign ram_ena = slave_busy | master_read_ram_en;
+assign ram_addra = master_read_ram_en ? {3'b0, master_reg_addr} : slave_reg_addr;
 
 assign sda_as_master = (master_sda_oen) ? 1'bz : master_sda_out;
 assign scl_as_master = (master_scl_oen) ? 1'bz : master_scl_out;
 
 assign sda_as_slave = (slave_sda_oen) ? 1'bz : slave_sda_out;
-assign sda_shadow = sda_as_slave;
-assign scl_shadow = scl_as_slave;
+assign sda_shadow = sda_as_master;
+assign scl_shadow = scl_as_master;
 
 assign ila_trig0[3:0] = count[3:0];
 assign ila_data[31  ] = clk;

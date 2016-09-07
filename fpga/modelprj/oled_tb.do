@@ -15,6 +15,6 @@ vsim -novopt  work.oled_tb -t 1ns -L secureip \
 
 do oled_ctrl_wave.do
 
-run -All
+run 2ms
 
 

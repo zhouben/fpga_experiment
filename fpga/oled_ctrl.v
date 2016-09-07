@@ -8,8 +8,8 @@ Description:
 */
 module oled_ctrl
 #(
-    parameter OLED_CHIP_ADDR = 8'h3C,
-    parameter FREQ_DIV_I2C = 10, //(250 - 1),
+    parameter OLED_CHIP_ADDR = 7'h3C,
+    parameter FREQ_DIV_I2C = 12'd30,
     parameter CMD_NUM = 28
     )(
     input clk,        // System Clock
@@ -45,13 +45,13 @@ reg init_d2;
 wire init_rising;
 reg black_d1;
 reg black_d2;
-wire black_rising;
+(* keep = "true" *) wire black_rising;
 reg white_d1;
 reg white_d2;
-wire white_rising;
+(* keep = "true" *) wire white_rising;
 reg interlace_d1;
 reg interlace_d2;
-wire interlace_rising;
+(* keep = "true" *) wire interlace_rising;
 
 reg [2:0]  state;
 reg [7:0]  reg_addr;
@@ -126,6 +126,11 @@ reg [15:0] sleep_cnt;
 reg [15:0] sleep_cnt_next;
 assign busy = (state_next != 3'b0) ? 1'b1 : 1'b0;
 assign config_reg_addr = reg_addr[4:0];
+
+always @(posedge clk) begin
+    if (~reset) sleep_cnt <= 16'b0;
+    else        sleep_cnt <= sleep_cnt_next;
+end
 
 always @(*) begin
     config_reg_read_en  <= 1'b0;

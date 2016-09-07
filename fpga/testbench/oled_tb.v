@@ -1,10 +1,8 @@
 `timescale 1ns / 100ps
 /*
 ----------------------------------------
-Stereoscopic Vision System
-Senior Design Project - Team 11
-California State University, Sacramento
-Spring 2015 / Fall 2015
+Zhou Changzhi
+test bench to control OLED display by I2C bus.
 ----------------------------------------
 
 %MODULE_TITLE%
@@ -17,9 +15,6 @@ Description:
 module oled_tb ();
 parameter CLOCKPERIOD = 20;
 parameter OLED_CHIP_ADDR = 7'h3C;
-parameter I2C_CYCLE = 40;
-parameter I2C_LOW_CYCLE = 400;
-parameter I2C_HIGH_CYCLE = 200;
 
 reg reset;
 reg clock;
@@ -39,7 +34,6 @@ wire        slave_busy;
 wire        slave_done;
 
 wire        slave_write_en;
-wire  [ 7:0] slave_data_in;
 wire [ 7:0] slave_data_out;
 
 wire        slave_sda_in;
@@ -153,7 +147,7 @@ initial begin
     #60
     reset <= 1'b1;
 
-    $display("Beginning write/read tests");
+    $display("Beginning configuring OLED's registers for initialization");
 
     // kick off configure oled
     #100
@@ -161,13 +155,7 @@ initial begin
     #40
     config_init <= 1'b0;
 
-    //   write_i2c_slave(OLED_CHIP_ADDR, 8'h00, master_send_data[0]);
-    //   read_i2c_slave (OLED_CHIP_ADDR, 8'h00, master_recv_data[0]);
-    //   $display("[%t] send %x, received %x", $realtime, master_send_data[0], master_recv_data[0]);
-    //   write_i2c_multiple(OLED_CHIP_ADDR, 8'h00, 32);
-    //read_i2c_multiple(OLED_CHIP_ADDR, 8'h00, 32);
-
-    #50000 $stop;
+    #17000000 $stop;
 end
 
 // Save slave data to register
@@ -176,8 +164,6 @@ always @ (posedge clock) begin
         $display("Writing to slave reg=%x data=%x", slave_reg_addr, slave_data_out);
         slave_recv_data[slave_reg_addr] <= slave_data_out;
     end
-
-    //slave_data_in <= slave_recv_data[slave_reg_addr];
 end
 
 /**************************************************************/
