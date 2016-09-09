@@ -7,3 +7,7 @@ tags
 !*.xise
 !*.ngc
 !.gitignore
+!*.coe
+!*.mif
+!*.xco
+!*.veo

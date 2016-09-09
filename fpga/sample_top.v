@@ -173,9 +173,6 @@ oled_ctrl u_oled
     .busy(),
     .done(),
 
-    .config_reg_read_en(master_read_ram_en),
-    .config_reg_addr(master_reg_addr),
-    .config_reg_data(ram_douta),
     .init(sw_ext_1),
     .all_black_disp(sw_ext_2),
     .all_white_disp(sw_ext_3),

@@ -9,8 +9,7 @@ Description:
 module oled_ctrl
 #(
     parameter OLED_CHIP_ADDR = 7'h3C,
-    parameter FREQ_DIV_I2C = 12'd30,
-    parameter CMD_NUM = 28
+    parameter FREQ_DIV_I2C = 12'd30
     )(
     input clk,        // System Clock
     input reset,      // Reset signal
@@ -20,24 +19,17 @@ module oled_ctrl
     output sda_oen,   // SDA Output Enable
     output scl_out,   // SCL Output
     output scl_oen,   // SCL Output Enable
-    output busy,
+    output reg busy,
     output done,
 
-    output reg config_reg_read_en,
-    output [4:0] config_reg_addr,
-    input  [7:0] config_reg_data,
     input init,
     input all_black_disp,
     input all_white_disp,
     input interlace_disp
 );
-localparam oled_idle = 0,
-    oled_read_cmd = 1,
-    oled_write_i2c = 2,
-    oled_wait_done = 3,
-    oled_sleep = 4,
-    oled_complete = 5;
-localparam sleep_cycle = 50000;
+localparam i2c_ctrl_state_idle = 0,
+    i2c_ctrl_state_init = 1,
+    i2c_ctrl_state_disp = 2;
 
 reg write_en;
 reg init_d1;
@@ -53,13 +45,52 @@ reg interlace_d1;
 reg interlace_d2;
 (* keep = "true" *) wire interlace_rising;
 
-reg [2:0]  state;
-reg [7:0]  reg_addr;
-reg [4:0]  reg_num;
+// oled_init module
+reg         oled_init_start;
+wire        oled_init_done;
+wire [7:0]  oled_init_reg_addr;
+wire [7:0]  oled_init_reg_data;
+wire        oled_init_write_i2c_en;
 
-reg [2:0] state_next;
-wire i2c_master_done;
-wire [4:0] reg_num_next;
+// oled_init module
+reg         oled_disp_start;
+wire        oled_disp_done;
+wire [7:0]  oled_disp_reg_addr;
+wire [7:0]  oled_disp_reg_data;
+wire        oled_disp_write_i2c_en;
+
+// i2c control
+reg  [7:0]  i2c_reg_addr;
+reg  [7:0]  i2c_reg_data;
+reg         i2c_write_en;
+wire        i2c_done;
+
+reg  [1:0]  i2c_ctrl_state;
+reg  [1:0]  i2c_ctrl_state_next;
+
+oled_init oled_init
+(
+    .clk         (clk),
+    .reset       (reset),
+    .start       (oled_init_start        ),
+    .done        (oled_init_done         ),
+    .reg_addr    (oled_init_reg_addr     ),
+    .reg_data    (oled_init_reg_data     ),
+    .write_i2c_en(oled_init_write_i2c_en ),
+    .i2c_done    (i2c_done               )
+);
+
+oled_disp oled_disp
+(
+    .clk         (clk),
+    .reset       (reset),
+    .start       (oled_disp_start        ),
+    .done        (oled_disp_done         ),
+    .reg_addr    (oled_disp_reg_addr     ),
+    .reg_data    (oled_disp_reg_data     ),
+    .write_i2c_en(oled_disp_write_i2c_en ),
+    .i2c_done    (i2c_done               )
+);
 
 // i2c Master
 i2c_master #(
@@ -73,13 +104,13 @@ i2c_master #(
     .open_drain (1'b1),
 
     .chip_addr  (OLED_CHIP_ADDR),
-    .reg_addr   (reg_addr),
-    .data_in    (config_reg_data),
-    .write_en   (write_en),
+    .reg_addr   (i2c_reg_addr),
+    .data_in    (i2c_reg_data),
+    .write_en   (i2c_write_en),
     .write_mode (1'b0),
     .read_en    (),
     .status     (),
-    .done       (i2c_master_done),
+    .done       (i2c_done),
     .busy       (),
     .data_out   (),
 
@@ -108,68 +139,44 @@ assign white_rising = white_d1 & (~white_d2);
 assign interlace_rising = interlace_d1 & (~interlace_d2);
 
 always @(posedge clk) begin
-    if (~reset) state <= oled_idle;
-    else        state <= state_next;
-end
-
-always @(posedge clk) begin
-    if (~reset) reg_addr <= 8'b0;
-    else begin
-        case (state)
-            oled_read_cmd: reg_addr <= reg_addr + 8'b1;
-            oled_complete: reg_addr <= 8'b0;
-        endcase
+    if (~reset) begin
+        i2c_ctrl_state <= i2c_ctrl_state_idle;
+    end else begin
+        i2c_ctrl_state <= i2c_ctrl_state_next;
     end
 end
-
-reg [15:0] sleep_cnt;
-reg [15:0] sleep_cnt_next;
-assign busy = (state_next != 3'b0) ? 1'b1 : 1'b0;
-assign config_reg_addr = reg_addr[4:0];
-
-always @(posedge clk) begin
-    if (~reset) sleep_cnt <= 16'b0;
-    else        sleep_cnt <= sleep_cnt_next;
-end
-
 always @(*) begin
-    config_reg_read_en  <= 1'b0;
-    state_next          <= state;
-    write_en            <= 1'b0;
-    sleep_cnt_next      <= 16'b0;
-    case (state)
-        oled_idle: begin
+    oled_init_start <= 1'b0;
+    i2c_reg_addr <= 8'bx;
+    i2c_reg_data <= 8'bx;
+    i2c_write_en <= 1'bx;
+    case (i2c_ctrl_state)
+        i2c_ctrl_state_idle: begin
             if (init_rising) begin
-                config_reg_read_en  <= 1'b1;
-                state_next          <= oled_read_cmd;
+                i2c_ctrl_state_next <= i2c_ctrl_state_init;
+                oled_init_start     <= 1'b1;
+                busy                <= 1'b1;
+            end
+            else if (black_rising) begin
+                i2c_ctrl_state_next <= i2c_ctrl_state_disp; 
+                oled_disp_start     <= 1'b1;
             end
         end
-        oled_read_cmd: begin
-            write_en            <= 1'b1;
-            state_next          <= oled_write_i2c;
+        i2c_ctrl_state_init: begin
+            i2c_reg_addr <= oled_init_reg_addr;
+            i2c_reg_data <= oled_init_reg_data;
+            i2c_write_en <= oled_init_write_i2c_en;
+            busy         <= 1'b1;
+            if (oled_init_done) i2c_ctrl_state_next <= i2c_ctrl_state_idle;
         end
-        oled_write_i2c: begin
-            if (i2c_master_done) begin
-                state_next <= oled_sleep;
-                sleep_cnt_next <= 16'd0;
-            end
+        i2c_ctrl_state_disp: begin
+            i2c_reg_addr <= oled_disp_reg_addr;
+            i2c_reg_data <= oled_disp_reg_data;
+            i2c_write_en <= oled_disp_write_i2c_en;
+            busy         <= 1'b1;
+            if (oled_disp_done) i2c_ctrl_state_next <= i2c_ctrl_state_idle;
         end
-        oled_sleep: begin
-            if (sleep_cnt < sleep_cycle) begin
-                sleep_cnt_next <= sleep_cnt + 16'd1;
-            end else begin
-                if (reg_addr == CMD_NUM) begin
-                    state_next <= oled_complete;
-                end else begin
-                    sleep_cnt_next      <= 16'd0;
-                    state_next          <= oled_read_cmd;
-                    config_reg_read_en  <= 1'b1;
-                end
-            end
-        end
-        oled_complete: state_next <= oled_idle;
     endcase
-
 end
 
 endmodule
