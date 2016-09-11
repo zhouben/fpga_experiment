@@ -4,8 +4,11 @@ vlog -reportprogress 300 -work work \
          ../testbench/oled_tb.v \
          ../i2c_master.v    \
          ../i2c_slave.v    \
+         ../oled_init.v     \
+         ../oled_disp.v     \
          ../oled_ctrl.v     \
          ../ipcore_dir/my_ram.v \
+         ../ipcore_dir/oled_config_rom.v \
      $env(XILINX)/verilog/src/glbl.v
 
 vsim -novopt  work.oled_tb -t 1ns -L secureip \
@@ -15,6 +18,6 @@ vsim -novopt  work.oled_tb -t 1ns -L secureip \
 
 do oled_ctrl_wave.do
 
-run 2ms
+run -All
 
 

@@ -138,6 +138,7 @@ reg [1:0]  led_cnt;
 // Clock Input Buffer for differential system clock
 //-------------------------------------------------------
 IBUFG u1 ( .O( clk), .I( clk_50M ) );
+IBUFG u2 ( .O( sw_reset), .I(sw_0));
 
 //-------------------------------------------------------
 // Output buffers for diagnostic LEDs
@@ -241,7 +242,7 @@ always @(posedge clk) begin
 end
 
 //assign sw_reset = sw_0 & ASYNC_OUT[0];
-assign sw_reset = sw_0;
+//assign sw_reset = sw_0;
 assign led_0_n = (led_cnt == 2'd0) ? 1'b0 : 1'b1;
 assign led_1_n = (led_cnt == 2'd1) ? 1'b0 : 1'b1;
 assign led_2_n = (led_cnt == 2'd2) ? 1'b0 : 1'b1;

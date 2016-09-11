@@ -20,7 +20,7 @@ module oled_ctrl
     output scl_out,   // SCL Output
     output scl_oen,   // SCL Output Enable
     output reg busy,
-    output done,
+    output reg done,
 
     input init,
     input all_black_disp,
@@ -88,7 +88,7 @@ oled_disp oled_disp
     .done        (oled_disp_done         ),
     .reg_addr    (oled_disp_reg_addr     ),
     .reg_data    (oled_disp_reg_data     ),
-    .write_i2c_en(oled_disp_write_i2c_en ),
+    .i2c_write_en(oled_disp_write_i2c_en ),
     .i2c_done    (i2c_done               )
 );
 
@@ -146,20 +146,31 @@ always @(posedge clk) begin
     end
 end
 always @(*) begin
+    i2c_reg_addr    <= 8'bx;
+    i2c_reg_data    <= 8'bx;
+    i2c_write_en    <= 1'bx;
+    busy            <= 1'b0;
+    done            <= 1'b0;
     oled_init_start <= 1'b0;
-    i2c_reg_addr <= 8'bx;
-    i2c_reg_data <= 8'bx;
-    i2c_write_en <= 1'bx;
+    oled_disp_start <= 1'b0;
+    i2c_ctrl_state_next <= i2c_ctrl_state;
     case (i2c_ctrl_state)
         i2c_ctrl_state_idle: begin
             if (init_rising) begin
                 i2c_ctrl_state_next <= i2c_ctrl_state_init;
+                i2c_reg_addr        <= oled_init_reg_addr;
+                i2c_reg_data        <= oled_init_reg_data;
+                i2c_write_en        <= oled_init_write_i2c_en;
                 oled_init_start     <= 1'b1;
                 busy                <= 1'b1;
             end
             else if (black_rising) begin
                 i2c_ctrl_state_next <= i2c_ctrl_state_disp; 
+                i2c_reg_addr        <= oled_disp_reg_addr;
+                i2c_reg_data        <= oled_disp_reg_data;
+                i2c_write_en        <= oled_disp_write_i2c_en;
                 oled_disp_start     <= 1'b1;
+                busy                <= 1'b1;
             end
         end
         i2c_ctrl_state_init: begin
@@ -167,6 +178,7 @@ always @(*) begin
             i2c_reg_data <= oled_init_reg_data;
             i2c_write_en <= oled_init_write_i2c_en;
             busy         <= 1'b1;
+            done         <= oled_init_done;
             if (oled_init_done) i2c_ctrl_state_next <= i2c_ctrl_state_idle;
         end
         i2c_ctrl_state_disp: begin
@@ -174,6 +186,7 @@ always @(*) begin
             i2c_reg_data <= oled_disp_reg_data;
             i2c_write_en <= oled_disp_write_i2c_en;
             busy         <= 1'b1;
+            done         <= oled_disp_done;
             if (oled_disp_done) i2c_ctrl_state_next <= i2c_ctrl_state_idle;
         end
     endcase

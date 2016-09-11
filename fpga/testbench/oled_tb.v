@@ -23,6 +23,7 @@ reg clock;
 reg [7:0]  slave_recv_data[0:255];
 reg [7:0]  master_send_data[0:255];
 reg [7:0]  master_recv_data[0:255];
+wire        master_done;
 
 wire SDA, SCL;
 wire [11:0] clk_div = 100;
@@ -54,6 +55,7 @@ wire master_scl_oen;
 
 reg [7:0] data_received;
 reg config_init;
+reg all_black_disp;
 
 //
 wire       ram_ena;
@@ -92,13 +94,10 @@ oled_ctrl
     .scl_oen(master_scl_oen),   // SCL Output Enable
 
     .busy(),
-    .done(),
+    .done(master_done),
 
-    .config_reg_read_en(ram_ena),
-    .config_reg_addr(ram_addra[4:0]),
-    .config_reg_data(ram_douta),
     .init(config_init),
-    .all_black_disp(),
+    .all_black_disp(all_black_disp),
     .all_white_disp(),
     .interlace_disp()
 );
@@ -136,6 +135,7 @@ initial begin
     // Initial Conditions
     reset <= 1'b0;
     config_init <= 1'b0;
+    all_black_disp <=1'b0;
 
     slave_chip_addr  <= OLED_CHIP_ADDR;
 
@@ -151,11 +151,15 @@ initial begin
 
     // kick off configure oled
     #100
-    config_init <= 1'b1;
+    //config_init <= 1'b1;
+    all_black_disp <=1'b1;
     #40
-    config_init <= 1'b0;
+    //config_init <= 1'b0;
+    all_black_disp <=1'b0;
 
-    #17000000 $stop;
+    wait (master_done == 1'b1);
+    $display("Init oled display completed!");
+    #1000 $finish;
 end
 
 // Save slave data to register

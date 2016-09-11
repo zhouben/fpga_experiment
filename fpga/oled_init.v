@@ -11,7 +11,7 @@ module oled_init
     output reg   write_i2c_en
 );
 
-localparam CMD_NUM = 28;
+localparam CMD_NUM = 5'd28;
 localparam sleep_cycle = 50000;
 localparam oled_idle = 0,
     oled_start_config = 1,
@@ -39,11 +39,11 @@ oled_config_rom oled_config_rom (
 assign reg_addr[7:0] = 8'b0;
 
 always @(posedge clk) begin
-    if (~reset) rom_addr <= 8'b0;
+    if (~reset) rom_addr <= 5'b0;
     else begin
         case (state)
-            oled_start_config: rom_addr <= rom_addr + 8'b1;
-            oled_complete: rom_addr <= 8'b0;
+            oled_start_config: rom_addr <= rom_addr + 5'b1;
+            oled_complete: rom_addr <= 5'b0;
         endcase
     end
 end
@@ -102,5 +102,20 @@ always @(*) begin
     endcase
 
 end
+
+// synthesis translate_off
+reg [8*20:1] state_ascii;
+always @(state) begin
+    case (state)
+        oled_idle           : state_ascii <= "IDLE";
+        oled_start_config   : state_ascii <= "START";
+        oled_configuring    : state_ascii <= "CONFIG";
+        oled_wait_done      : state_ascii <= "WAIT";
+        oled_sleep          : state_ascii <= "SLEEP";
+        oled_complete       : state_ascii <= "CPLT";
+        default             : state_ascii <= "N/A";
+    endcase
+end
+// synthesis translate_on
 endmodule
 
