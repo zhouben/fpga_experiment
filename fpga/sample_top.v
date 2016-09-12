@@ -96,27 +96,25 @@ module sample_top #(
 
 wire  clk;
 wire  sw_reset;
+wire  db_level;
+wire  disp_mode;
 
 wire  led_0_n;
 wire  led_1_n;
 wire  led_2_n;
 wire  led_3_n;
 
-wire [4:0] master_reg_addr;
-wire master_write_en;
 wire master_sda_out;
 wire master_sda_oen;
 wire master_scl_out;
 wire master_scl_oen;
 wire master_read_ram_en;
 
-wire [7:0] slave_reg_addr;
 wire slave_sda_out;
 wire slave_sda_oen;
-wire slave_scl_out;
+//wire slave_scl_out;
 wire slave_scl_oen;
-wire slave_done;
-wire slave_busy;
+//wire slave_done;
 
 wire ram_ena;
 wire ram_wea;
@@ -175,9 +173,7 @@ oled_ctrl u_oled
     .done(),
 
     .init(sw_ext_1),
-    .all_black_disp(sw_ext_2),
-    .all_white_disp(sw_ext_3),
-    .interlace_disp(sw_ext_4)
+    .disp_mode(disp_mode)
 );
 
 // i2c Slave
@@ -191,18 +187,18 @@ i2c_slave #(
     .open_drain (1'b1),
 
     .chip_addr  (I2C_ADDRESS),
-    .reg_addr   (slave_reg_addr),
+    .reg_addr   (ram_addra),
     .data_in    (ram_douta),
     .write_en   (ram_wea),
     .data_out   (ram_dina),
-    .done       (slave_done),
-    .busy       (slave_busy),
+//    .done       (slave_done),
+    .busy       (ram_ena),
 
     .sda_in     (sda_as_slave),
     .scl_in     (scl_as_slave),
     .sda_out    (slave_sda_out),
     .sda_oen    (slave_sda_oen),
-    .scl_out    (slave_scl_out),
+//    .scl_out    (slave_scl_out),
     .scl_oen    (slave_scl_oen)
 );
 
@@ -221,6 +217,7 @@ my_ila my_ila_inst (
     .DATA(ila_data), // IN BUS [31:0]
     .TRIG0(ila_trig0) // IN BUS [3:0]
 );
+
 my_ram my_ram_inst (
   .clka(clk), // input clka
   .ena(ram_ena), // input ena
@@ -229,6 +226,15 @@ my_ram my_ram_inst (
   .dina(ram_dina), // input [7 : 0] dina
   .douta(ram_douta) // output [7 : 0] douta
 );
+
+debounce debounce(
+    .clk(clk),
+    .reset(sw_reset),
+    .sw(sw_ext_2),
+    .db_level(db_level),
+    .db_tick(disp_mode)
+);
+
 
 always @(posedge clk) begin
     if (~sw_reset)              count <= 0;
@@ -254,13 +260,8 @@ assign led_ext_4 = (sw_ext_4) ? 1'bz : 1'b0;
 
 assign led_ext_5 = (led_cnt == 2'd3) ? 1'b0 : 1'bz;
 assign led_ext_6 = (led_cnt == 2'd2) ? 1'b0 : 1'bz;
-//assign led_ext_7 = (led_cnt == 2'd1) ? 1'b0 : 1'bz;
-//assign led_ext_8 = (led_cnt == 2'd0) ? 1'b0 : 1'bz;
 assign led_ext_7 = (ASYNC_OUT[1]) ? 1'b0 : 1'bz;
 assign led_ext_8 = (ASYNC_OUT[2]) ? 1'b0 : 1'bz;
-
-assign ram_ena = slave_busy | master_read_ram_en;
-assign ram_addra = master_read_ram_en ? {3'b0, master_reg_addr} : slave_reg_addr;
 
 assign sda_as_master = (master_sda_oen) ? 1'bz : master_sda_out;
 assign scl_as_master = (master_scl_oen) ? 1'bz : master_scl_out;
@@ -269,21 +270,19 @@ assign sda_as_slave = (slave_sda_oen) ? 1'bz : slave_sda_out;
 assign sda_shadow = sda_as_master;
 assign scl_shadow = scl_as_master;
 
-assign ila_trig0[3:0] = count[3:0];
-assign ila_data[31  ] = clk;
-assign ila_data[30:25] = count[5:0];
-assign ila_data[24:8] = {
+assign ila_trig0[3:0] = {disp_mode, db_level, sw_ext_2, sw_ext_1};
+assign ila_data[31:0] = {
+    count[22:0],
     scl_as_slave,
-    scl_as_slave,
-    ram_wea,
-    slave_done,
-    slave_busy,
     slave_sda_out,
     slave_sda_oen,
-    slave_scl_out,
     slave_scl_oen,
-    ram_dina};
+    debounce.state_reg,
+    disp_mode,
+    db_level,
+    sw_ext_2,
+    sw_ext_1
+    };
 
-assign ila_data[ 7:0] = ram_douta;
 assign ASYNC_IN = ram_douta;
 endmodule

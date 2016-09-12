@@ -63,7 +63,6 @@ module i2c_slave
 
     reg rw_bit;
     reg nack;
-(* keep = "true" *)    reg [6:0] chip_addr_reg;
 
     wire [7:0] word;
     wire [REG_DATA_WIDTH - 1:0] word_exp;
@@ -93,10 +92,6 @@ module i2c_slave
     assign scl_falling = ~scl_s &&  scl_ss;
     assign sda_rising  =  sda_s && ~sda_ss;
     assign sda_falling = ~sda_s &&  sda_ss;
-
-    always @(posedge clk)
-        if (~reset) chip_addr_reg <= 7'd0; //{7{1'b1}};
-        else        chip_addr_reg <= chip_addr;
 
     always @(posedge clk) begin
         if (~reset) begin
@@ -170,7 +165,7 @@ module i2c_slave
                                     // Check the i2c address and determine if the x-fer is for this slave
                                     if (addr_bytes == 2'b00) begin
                                         // Nope, go back to idle
-                                        if (word[7:1] != chip_addr_reg) begin
+                                        if (word[7:1] != chip_addr) begin
                                             state <= s_idle;
                                             done  <= 1'b1;
                                         end

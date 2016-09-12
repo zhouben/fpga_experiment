@@ -9,7 +9,7 @@ Description:
 module oled_ctrl
 #(
     parameter OLED_CHIP_ADDR = 7'h3C,
-    parameter FREQ_DIV_I2C = 12'd30
+    parameter FREQ_DIV_I2C = 5'd30
     )(
     input clk,        // System Clock
     input reset,      // Reset signal
@@ -23,9 +23,7 @@ module oled_ctrl
     output reg done,
 
     input init,
-    input all_black_disp,
-    input all_white_disp,
-    input interlace_disp
+    input disp_mode     // posedge trigger.
 );
 localparam i2c_ctrl_state_idle = 0,
     i2c_ctrl_state_init = 1,
@@ -35,15 +33,6 @@ reg write_en;
 reg init_d1;
 reg init_d2;
 wire init_rising;
-reg black_d1;
-reg black_d2;
-(* keep = "true" *) wire black_rising;
-reg white_d1;
-reg white_d2;
-(* keep = "true" *) wire white_rising;
-reg interlace_d1;
-reg interlace_d2;
-(* keep = "true" *) wire interlace_rising;
 
 // oled_init module
 reg         oled_init_start;
@@ -95,11 +84,12 @@ oled_disp oled_disp
 // i2c Master
 i2c_master #(
     .ADDR_BYTES(1),
-    .DATA_BYTES(1)
+    .DATA_BYTES(1),
+    .I2C_CLK_DIV(FREQ_DIV_I2C),
+    .I2C_CLK_WIDTH(5)
 ) i2c_master (
     .clk        (clk),
     .reset      (reset),
-    .clk_div    (FREQ_DIV_I2C),
 
     .open_drain (1'b1),
 
@@ -108,7 +98,7 @@ i2c_master #(
     .data_in    (i2c_reg_data),
     .write_en   (i2c_write_en),
     .write_mode (1'b0),
-    .read_en    (),
+    .read_en    (1'b0),
     .status     (),
     .done       (i2c_done),
     .busy       (),
@@ -125,18 +115,9 @@ i2c_master #(
 always @(posedge clk) begin
     init_d1 <= init;
     init_d2 <= init_d1;
-    black_d1 <= all_black_disp;
-    black_d2 <= black_d1;
-    white_d1 <= all_white_disp;
-    white_d2 <= white_d1;
-    interlace_d1 <= interlace_disp;
-    interlace_d2 <= interlace_d1;
 end
 
 assign init_rising = init_d1 & (~init_d2);
-assign black_rising = black_d1 & (~black_d2);
-assign white_rising = white_d1 & (~white_d2);
-assign interlace_rising = interlace_d1 & (~interlace_d2);
 
 always @(posedge clk) begin
     if (~reset) begin
@@ -164,7 +145,7 @@ always @(*) begin
                 oled_init_start     <= 1'b1;
                 busy                <= 1'b1;
             end
-            else if (black_rising) begin
+            else if (disp_mode) begin
                 i2c_ctrl_state_next <= i2c_ctrl_state_disp; 
                 i2c_reg_addr        <= oled_disp_reg_addr;
                 i2c_reg_data        <= oled_disp_reg_data;

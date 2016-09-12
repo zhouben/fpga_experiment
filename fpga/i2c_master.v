@@ -11,11 +11,12 @@ module i2c_master
         parameter ADDR_BYTES = 1,   // internal address bytes.
         parameter DATA_BYTES = 2,
         parameter REG_ADDR_WIDTH = 8 * ADDR_BYTES,
-        parameter ST_WIDTH = 1 + ADDR_BYTES + DATA_BYTES
+        parameter ST_WIDTH = 1 + ADDR_BYTES + DATA_BYTES,
+        parameter I2C_CLK_DIV = 5'd30,
+        parameter I2C_CLK_WIDTH = 5
     )(
         input  clk,            // System clock
         input  reset,          // Reset signal
-        input  [11:0] clk_div, // Clock divider value to configure SCL from the system clock
 
         input open_drain, // Open drain
 
@@ -63,7 +64,7 @@ module i2c_master
     wire [2:0] byte_count;
 
     reg [1:0] scl_count;
-    reg [11:0] clk_count;
+    reg [I2C_CLK_WIDTH - 1 :0] clk_count;
 
     reg sda_reg, oen_reg, sda_s, scl_s;
     reg writing, reading, in_prog;
@@ -92,18 +93,19 @@ module i2c_master
             reading   <= 1'b0;
             in_prog   <= 1'b0;
 
-            status    <= 1'b0;
+            status    <= {ST_WIDTH{1'b0}};
             done      <= 1'b0;
             busy      <= 1'b0;
 
-            data_out  <= 1'b0;
+            data_out  <= {(8 * DATA_BYTES){1'b0}};
 
             scl_count <= 2'b10;
-            clk_count <= 12'b0000_0000_0000;
+            clk_count <= {I2C_CLK_WIDTH{1'b0}};;
         end
         else begin
             sda_s <= sda_in;
             scl_s <= scl_in;
+            data_out <= data_out;
 
             if (state == s_idle) begin
                 done <= 1'b0;
@@ -120,7 +122,7 @@ module i2c_master
                     else begin
                         sda_reg <= open_drain ? 1'b0 : 1'b1;
                         oen_reg <= 1'b1;
-                        clk_count <= 0;
+                        clk_count <= {I2C_CLK_WIDTH{1'b0}};;
                     end
                 end
 
@@ -143,14 +145,14 @@ module i2c_master
                 if (write_en) begin
                     state   <= in_prog ? s_shift_out : s_start_write;
                     writing <= 1'b1;
-                    status  <= 1'b0;
+                    status  <= {ST_WIDTH{1'b0}};
                     busy    <= 1'b1;
                 end
                 else if (read_en) begin
                     state    <= ADDR_BYTES == 0 ? s_start_read : s_start_write;
                     writing  <= 1'b0;
                     reading  <= 1'b0;
-                    status   <= 1'b0;
+                    status   <= {ST_WIDTH{1'b0}};
                     busy     <= 1'b1;
                 end
                 else begin
@@ -158,8 +160,8 @@ module i2c_master
                 end
             end
             else begin
-                if (clk_count == clk_div) begin
-                    clk_count <= 2'b00;
+                if (clk_count == I2C_CLK_DIV) begin
+                    clk_count <= 12'd0;
                     scl_count <= scl_count + 1'b1;
 
                     case (state)
@@ -284,7 +286,7 @@ module i2c_master
                 end
                 else begin
                     if (scl_count[1] == 1'b0 || scl_s == 1'b1) begin
-                        clk_count <= clk_count + 1'b1;
+                        clk_count <= clk_count + 1'd1;
                     end
                 end
             end
