@@ -19,10 +19,12 @@ localparam D        = 32'h10325476;
 
 localparam RDY4RECV = 3'd0;
 localparam RECV_MSG = 3'd1;
+localparam RECVWAIT = 3'd2;
 localparam LOOP2    = 3'd3;
 localparam LOOP3    = 3'd4;
 localparam LOOP4    = 3'd5;
-localparam COMPLETE = 3'd6;
+localparam CPLT_PRE = 3'd6;
+localparam COMPLETE = 3'd7;
 
 reg [2:0]   state;
 reg [2:0]   state_next;
@@ -32,6 +34,11 @@ reg         new_loop;
 reg [5:0]   round_num;
 reg [31:0]  msg_d;
 reg [31:0]  temp;
+
+reg [31:0]  a_pre;
+reg [31:0]  b_pre;
+reg [31:0]  c_pre;
+reg [31:0]  d_pre;
 
 wire [31:0] ti;
 wire [4:0]  s;
@@ -83,24 +90,29 @@ always @(posedge clk) begin
     end else begin
         case (state_next)
             RECV_MSG: msg_index <= (new_loop) ? 4'd0 : ((write_en) ? (msg_index + 4'd1) : msg_index);
+            RECVWAIT: msg_index <= msg_index;
             LOOP2   : msg_index <= (new_loop) ? 4'd1 : (msg_index + 4'd5);
             LOOP3   : msg_index <= (new_loop) ? 4'd5 : (msg_index + 4'd3);
             LOOP4   : msg_index <= (new_loop) ? 4'd0 : (msg_index + 4'd7);
-    endcase
+        endcase
     end
 end
 
 always @(posedge clk) begin
-    msg_d <= msg;
+    msg_d <= (write_en) ? msg : msg_d;
 end
 
 always @(posedge clk) begin
     if (state == RECV_MSG) msg_r[msg_index] <= msg_d;
 end
 
-always @(posedge clk) begin
-    if(~rst_n) rdy     <= 1'b1;
-    else rdy <= ((state_next == RDY4RECV) || (state_next == RECV_MSG)) ? 1'b1 : 1'b0;
+always @(*) begin
+    rdy <= 1'b0;
+    case (state)
+        RDY4RECV: rdy <= 1'b1;
+        RECV_MSG: rdy <= (msg_index != 15) ? 1'b1 : 1'b0;
+        RECVWAIT: rdy <= (msg_index != 15) ? 1'b1 : 1'b0;
+    endcase
 end
 
 always @(posedge clk) begin
@@ -110,28 +122,42 @@ end
 
 always @(posedge clk) begin
     if(~rst_n)  round_num <= 6'b0;
-    else        round_num <= ((state == RECV_MSG) || (state == LOOP2) || (state == LOOP3) || (state == LOOP4)) ? round_num + 6'd1 : 6'd0;
+    else        round_num <= ((state == RECV_MSG) || (state == LOOP2) || (state == LOOP3) || (state == LOOP4)) ? round_num + 6'd1 : ((state == RECVWAIT) ? round_num : 6'd0);
 end
+
 always @(posedge clk) begin
     if(~rst_n) begin
         a           <= A;
         b           <= B;
         c           <= C;
         d           <= D;
+        a_pre       <= A;
+        b_pre       <= B;
+        c_pre       <= C;
+        d_pre       <= D;
         round_num   <= 6'b0;
     end else begin
-        if((state == RECV_MSG) || (state == LOOP2) || (state == LOOP3) || (state == LOOP4)) begin
-            round_num <= round_num + 6'd1;
-            d           <= c;
-            c           <= b;
-            b           <= temp;
-            a           <= d;
-        end else if (state == COMPLETE) begin
-            a   <= a + A;
-            b   <= b + B;
-            c   <= c + C;
-            d   <= d + D;
-        end
+        case (state)
+            RECV_MSG, LOOP2, LOOP3, LOOP4: begin
+                round_num   <= round_num + 6'd1;
+                d           <= c;
+                c           <= b;
+                b           <= temp;
+                a           <= d;
+            end
+            CPLT_PRE: begin
+                a   <= a + a_pre;
+                b   <= b + b_pre;
+                c   <= c + c_pre;
+                d   <= d + d_pre;
+            end
+            COMPLETE: begin
+                a_pre   <= a;
+                b_pre   <= b;
+                c_pre   <= c;
+                d_pre   <= d;
+            end
+        endcase
     end
 end
 
@@ -162,7 +188,12 @@ always @(*) begin
             if (msg_index == 4'hF) begin
                 state_next <= LOOP2;
                 new_loop    <= 1'b1;
+            end else if (~write_en) begin
+                state_next  <= RECVWAIT;
             end
+        end
+        RECVWAIT: begin
+            if (write_en) state_next <= RECV_MSG;
         end
         LOOP2: begin
             temp <= b + SS((a + G(b, c, d) + msg_r[msg_index] + ti), s);
@@ -181,8 +212,11 @@ always @(*) begin
         LOOP4: begin
             temp <= b + SS((a + I(b, c, d) + msg_r[msg_index] + ti), s);
             if (msg_index == 4'd9) begin
-                state_next <= COMPLETE;
+                state_next <= CPLT_PRE;
             end
+        end
+        CPLT_PRE: begin
+            state_next <= COMPLETE;
         end
         COMPLETE: begin
             state_next <= RDY4RECV;
@@ -196,9 +230,11 @@ always @(state) begin
     case (state)
         RDY4RECV    : state_ascii <= "RDY";
         RECV_MSG    : state_ascii <= "RECV";
+        RECVWAIT    : state_ascii <= "WAIT";
         LOOP2       : state_ascii <= "LOOP2";
         LOOP3       : state_ascii <= "LOOP3";
         LOOP4       : state_ascii <= "LOOP4";
+        CPLT_PRE    : state_ascii <= "C_PRE";
         COMPLETE    : state_ascii <= "CPLT";
     endcase
 end
