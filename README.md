@@ -10,3 +10,5 @@ PCIe transfer experiment on MARS6 FPGA.
 1. add python scripts to control OLED display. Work well on Raspberry Pi.
 1. configure OLED display by I2C passed on test bench.
 1. switch display mode, all black/white, interlace/reverse interlace.
+1. add debounce module for avoiding button debounce on display mode switch.
+1. add md5sum module and testbench for modulesim.
