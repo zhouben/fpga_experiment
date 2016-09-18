@@ -1,3 +1,6 @@
+// uncomment the line below for debug
+// `define MD5SUM_DEBUG
+
 module md5sum(
     input           clk,
     input           rst_n,
@@ -42,9 +45,11 @@ reg [31:0]  d_pre;
 
 wire [31:0] ti;
 wire [4:0]  s;
+`ifdef MD5SUM_DEBUG
 reg  [31:0] sa;
 reg  [31:0] sb;
 reg  [31:0] fv;
+`endif
 
 sint_table sint_table
 (
@@ -86,7 +91,7 @@ endfunction
 
 always @(posedge clk) begin
     if(~rst_n) begin
-        msg_index = 4'd0;
+        msg_index <= 4'd0;
     end else begin
         case (state_next)
             RECV_MSG: msg_index <= (new_loop) ? 4'd0 : ((write_en) ? (msg_index + 4'd1) : msg_index);
@@ -121,11 +126,6 @@ always @(posedge clk) begin
 end
 
 always @(posedge clk) begin
-    if(~rst_n)  round_num <= 6'b0;
-    else        round_num <= ((state == RECV_MSG) || (state == LOOP2) || (state == LOOP3) || (state == LOOP4)) ? round_num + 6'd1 : ((state == RECVWAIT) ? round_num : 6'd0);
-end
-
-always @(posedge clk) begin
     if(~rst_n) begin
         a           <= A;
         b           <= B;
@@ -137,6 +137,7 @@ always @(posedge clk) begin
         d_pre       <= D;
         round_num   <= 6'b0;
     end else begin
+        round_num   <= 6'd0;
         case (state)
             RECV_MSG, LOOP2, LOOP3, LOOP4: begin
                 round_num   <= round_num + 6'd1;
@@ -145,6 +146,7 @@ always @(posedge clk) begin
                 b           <= temp;
                 a           <= d;
             end
+            RECVWAIT: round_num <= round_num;
             CPLT_PRE: begin
                 a   <= a + a_pre;
                 b   <= b + b_pre;
@@ -163,7 +165,6 @@ end
 
 always @(posedge clk) begin
     if(~rst_n) begin
-        done    <= 1'b0;
         state   <= RDY4RECV;
     end else begin
         state   <= state_next;
@@ -181,10 +182,12 @@ always @(*) begin
             end
         end
         RECV_MSG: begin
-            fv <= F(b, c, d);
-            sb <= (a + F(b, c, d) + msg_d + ti);
-            sa <= SS((a + F(b, c, d) + msg_d + ti), s);
-            temp <= b + SS((a + F(b, c, d) + msg_d + ti), s);
+            `ifdef MD5SUM_DEBUG
+                fv <= F(b, c, d);
+                sb <= (a + F(b, c, d) + msg_d + ti);
+                sa <= SS((a + F(b, c, d) + msg_d + ti), s);
+                temp <= b + SS((a + F(b, c, d) + msg_d + ti), s);
+            `endif 
             if (msg_index == 4'hF) begin
                 state_next <= LOOP2;
                 new_loop    <= 1'b1;

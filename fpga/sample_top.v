@@ -129,7 +129,7 @@ wire [ 2:0] ASYNC_OUT;
 wire [ 3:0] ila_trig0;
 wire [31:0] ila_data;
 
-reg [23:0] count; //10M
+reg [23:0] count; //10M, just for led flashing.
 reg [1:0]  led_cnt;
 
 //-------------------------------------------------------
@@ -158,6 +158,28 @@ PULLUP led_ext_8_inst(led_ext_8);
 PULLUP pullup_i2c1(sda_as_slave);
 PULLUP pullup_i2c2(sda_as_master);
 PULLUP pullup_i2c3(scl_as_master);
+
+reg [31:0]  msg[0:31];
+wire        rdy;
+wire        done;
+reg         write_en;
+wire [31:0] a;
+wire [31:0] b;
+wire [31:0] c;
+wire [31:0] d;
+
+md5sum md5sum(
+    .clk(clk),
+    .rst_n(sw_reset),
+    .rdy(rdy),
+    .msg(msg_input),
+    .write_en(write_en),
+    .a(a),
+    .b(b),
+    .c(c),
+    .d(d),
+    .done(done)
+);
 
 oled_ctrl u_oled
 (
