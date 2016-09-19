@@ -77,6 +77,11 @@ task input_msg;
             write_en  = 1'b1;
             msg_index = n * 16;
 
+            @(posedge clk);
+            i = 0;
+            write_en  = 1'b0;
+            @(posedge clk);
+
             while( i < 15) begin
                 @(posedge clk);
                 write_en  = 1'b1;

@@ -31,11 +31,11 @@ localparam COMPLETE = 3'd7;
 
 reg [2:0]   state;
 reg [2:0]   state_next;
-reg [31:0]  msg_r [0:15];
+reg [31:0]  msg_buffer [0:15];
 reg [3:0]   msg_index;
+reg [3:0]   msg_index_save;
 reg         new_loop;
 reg [5:0]   round_num;
-reg [31:0]  msg_d;
 reg [31:0]  temp;
 
 reg [31:0]  a_pre;
@@ -91,11 +91,23 @@ endfunction
 
 always @(posedge clk) begin
     if(~rst_n) begin
+        msg_index_save <= 4'd0;
+    end else begin
+        case (state_next)
+            RECV_MSG: msg_index_save <= msg_index_save + 4'd1;
+            RECVWAIT: msg_index_save <= msg_index_save;
+            default : msg_index_save <= 4'd0;
+        endcase
+    end
+end
+
+always @(posedge clk) begin
+    if(~rst_n) begin
         msg_index <= 4'd0;
     end else begin
         case (state_next)
-            RECV_MSG: msg_index <= (new_loop) ? 4'd0 : ((write_en) ? (msg_index + 4'd1) : msg_index);
-            RECVWAIT: msg_index <= msg_index;
+            RECV_MSG: msg_index <= msg_index_save;
+            RECVWAIT: msg_index <= msg_index_save;
             LOOP2   : msg_index <= (new_loop) ? 4'd1 : (msg_index + 4'd5);
             LOOP3   : msg_index <= (new_loop) ? 4'd5 : (msg_index + 4'd3);
             LOOP4   : msg_index <= (new_loop) ? 4'd0 : (msg_index + 4'd7);
@@ -104,11 +116,7 @@ always @(posedge clk) begin
 end
 
 always @(posedge clk) begin
-    msg_d <= (write_en) ? msg : msg_d;
-end
-
-always @(posedge clk) begin
-    if (state == RECV_MSG) msg_r[msg_index] <= msg_d;
+    if (state_next == RECV_MSG) msg_buffer[msg_index_save] <= msg;
 end
 
 always @(*) begin
@@ -184,10 +192,10 @@ always @(*) begin
         RECV_MSG: begin
             `ifdef MD5SUM_DEBUG
                 fv <= F(b, c, d);
-                sb <= (a + F(b, c, d) + msg_d + ti);
-                sa <= SS((a + F(b, c, d) + msg_d + ti), s);
-                temp <= b + SS((a + F(b, c, d) + msg_d + ti), s);
+                sb <= (a + F(b, c, d) + msg_buffer[msg_index] + ti);
+                sa <= SS((a + F(b, c, d) + msg_buffer[msg_index] + ti), s);
             `endif 
+            temp <= b + SS((a + F(b, c, d) + msg_buffer[msg_index] + ti), s);
             if (msg_index == 4'hF) begin
                 state_next <= LOOP2;
                 new_loop    <= 1'b1;
@@ -199,21 +207,21 @@ always @(*) begin
             if (write_en) state_next <= RECV_MSG;
         end
         LOOP2: begin
-            temp <= b + SS((a + G(b, c, d) + msg_r[msg_index] + ti), s);
+            temp <= b + SS((a + G(b, c, d) + msg_buffer[msg_index] + ti), s);
             if (msg_index == 4'd12) begin
                 state_next <= LOOP3;
                 new_loop    <= 1'b1;
             end
         end
         LOOP3: begin
-            temp <= b + SS((a + H(b, c, d) + msg_r[msg_index] + ti), s);
+            temp <= b + SS((a + H(b, c, d) + msg_buffer[msg_index] + ti), s);
             if (msg_index == 4'd2) begin
                 state_next <= LOOP4;
                 new_loop    <= 1'b1;
             end
         end
         LOOP4: begin
-            temp <= b + SS((a + I(b, c, d) + msg_r[msg_index] + ti), s);
+            temp <= b + SS((a + I(b, c, d) + msg_buffer[msg_index] + ti), s);
             if (msg_index == 4'd9) begin
                 state_next <= CPLT_PRE;
             end

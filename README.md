@@ -12,3 +12,4 @@ PCIe transfer experiment on MARS6 FPGA.
 1. switch display mode, all black/white, interlace/reverse interlace.
 1. add debounce module for avoiding button debounce on display mode switch.
 1. add md5sum module and testbench for modulesim.
+1. add sh1sum module and testbench for modulesim.
