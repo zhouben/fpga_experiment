@@ -41,7 +41,7 @@ add wave -noupdate /oled_tb/i2c_slave/sr
 add wave -noupdate -radix unsigned /oled_tb/i2c_slave/state
 add wave -noupdate /oled_tb/i2c_slave/write_en
 add wave -noupdate /oled_tb/i2c_slave/writing
-add wave -noupdate /oled_tb/u_oled/oled_dot_matrix_disp/din
+add wave -noupdate -radix hexadecimal /oled_tb/u_oled/oled_dot_matrix_disp/din
 add wave -noupdate -radix hexadecimal /oled_tb/u_oled/oled_dot_matrix_disp/disp_cnt
 add wave -noupdate -radix hexadecimal /oled_tb/u_oled/oled_dot_matrix_disp/disp_data
 add wave -noupdate /oled_tb/u_oled/oled_dot_matrix_disp/disp_done
@@ -64,7 +64,7 @@ add wave -noupdate -radix hexadecimal /oled_tb/u_oled/oled_dot_matrix_disp/oled_
 add wave -noupdate -radix hexadecimal /oled_tb/u_oled/oled_dot_matrix_disp/oled_disp_v2/y
 add wave -noupdate -radix hexadecimal /oled_tb/u_oled/oled_dot_matrix_disp/oled_disp_v2/pos
 TreeUpdate [SetDefaultTree]
-WaveRestoreCursors {{Cursor 1} {200 ns} 0}
+WaveRestoreCursors {{Cursor 1} {217 ns} 0}
 configure wave -namecolwidth 348
 configure wave -valuecolwidth 100
 configure wave -justifyvalue left
@@ -79,4 +79,4 @@ configure wave -griddelta 40
 configure wave -timeline 0
 configure wave -timelineunits ns
 update
-WaveRestoreZoom {144 ns} {272 ns}
+WaveRestoreZoom {0 ns} {438 ns}

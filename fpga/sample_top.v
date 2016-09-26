@@ -96,8 +96,10 @@ module sample_top #(
 
 wire  clk;
 wire  sw_reset;
-wire  db_level;
-wire  disp_mode;
+
+wire    init_mode_tick;
+wire    disp_mode;
+wire    dot_matrix_mode_tick;
 
 wire  led_0_n;
 wire  led_1_n;
@@ -131,6 +133,13 @@ wire [31:0] ila_data;
 
 reg [23:0] count; //10M, just for led flashing.
 reg [1:0]  led_cnt;
+
+reg         dot_matrix_mode;
+reg         dot_matrix_mode_d;
+reg [7:0]   dot_matrix_din;
+reg         dot_matrix_wen;
+reg         print_state;
+
 
 //-------------------------------------------------------
 // Clock Input Buffer for differential system clock
@@ -172,7 +181,7 @@ md5sum md5sum(
     .clk(clk),
     .rst_n(sw_reset),
     .rdy(rdy),
-    .msg(msg_input),
+    .msg(),
     .write_en(write_en),
     .a(a),
     .b(b),
@@ -193,9 +202,12 @@ oled_ctrl u_oled
     .scl_oen(master_scl_oen),   // SCL Output Enable
     .busy(),
     .done(),
+    .wen(dot_matrix_wen),
+    .din(dot_matrix_din),
 
-    .init(sw_ext_1),
-    .disp_mode(disp_mode)
+    .init(init_mode_tick),
+    .disp_mode(disp_mode_tick),
+    .dot_matrix_mode()
 );
 
 // i2c Slave
@@ -249,14 +261,21 @@ my_ram my_ram_inst (
   .douta(ram_douta) // output [7 : 0] douta
 );
 
-debounce debounce(
+debounce db1(
+    .clk(clk),
+    .reset(sw_reset),
+    .sw(sw_ext_1),
+    .db_level(),
+    .db_tick(init_mode_tick)
+);
+
+debounce db2(
     .clk(clk),
     .reset(sw_reset),
     .sw(sw_ext_2),
-    .db_level(db_level),
-    .db_tick(disp_mode)
+    .db_level(),
+    .db_tick(disp_mode_tick)
 );
-
 
 always @(posedge clk) begin
     if (~sw_reset)              count <= 0;
@@ -267,6 +286,38 @@ end
 always @(posedge clk) begin
     if (~sw_reset)              led_cnt <= 0;
     else if (count == FREQ_DIV) led_cnt <= led_cnt + 2'd1;
+end
+
+reg [7:0] pos;
+reg [3:0] char_num;
+always @(posedge clk) begin
+    if (~sw_reset) begin
+        print_state     <= 1'b0;
+    end else if (dot_matrix_mode_tick && print_state == 1'b0) begin
+        print_state <= 1'b1;
+    end else if (char_num == 4'd14) begin
+        print_state <= 1'b0;
+    end
+end
+
+always @(posedge clk) begin
+    if (~sw_reset) begin
+        dot_matrix_din <= 8'h0;
+        dot_matrix_wen <= 1'b0;
+        pos             <= 8'h32;
+        char_num        <= 4'd0;
+    end else if(print_state) begin
+        char_num    <= char_num + 4'd1;
+        dot_matrix_wen <= 1'b1;
+        dot_matrix_din <= pos;
+        if (char_num != 4'd0) begin
+            pos <= pos + 8'd1;
+        end
+    end else begin
+        char_num        <= 4'd0;
+        dot_matrix_din <= 8'h0;
+        dot_matrix_wen <= 1'b0;
+    end
 end
 
 //assign sw_reset = sw_0 & ASYNC_OUT[0];
@@ -292,19 +343,30 @@ assign sda_as_slave = (slave_sda_oen) ? 1'bz : slave_sda_out;
 assign sda_shadow = sda_as_master;
 assign scl_shadow = scl_as_master;
 
-assign ila_trig0[3:0] = {disp_mode, db_level, sw_ext_2, sw_ext_1};
+assign ila_trig0[3:0] = { disp_mode_tick, dot_matrix_mode_tick, disp_mode_tick, init_mode_tick};
 assign ila_data[31:0] = {
-    count[22:0],
-    scl_as_slave,
-    slave_sda_out,
-    slave_sda_oen,
-    slave_scl_oen,
-    debounce.state_reg,
-    disp_mode,
-    db_level,
-    sw_ext_2,
-    sw_ext_1
+    u_oled.oled_dot_matrix_disp.reg_data,
+    u_oled.din,
+    u_oled.oled_dot_matrix_disp.state,
+    u_oled.wen,
+    u_oled.oled_dot_matrix_disp.wen,
+    dot_matrix_din,
+    dot_matrix_wen,
+    dot_matrix_mode_tick
     };
 
 assign ASYNC_IN = ram_douta;
+
+always @(posedge clk) begin
+    if (~sw_reset) begin
+        dot_matrix_mode     <= 1'b0;
+        dot_matrix_mode_d   <= 1'b0;
+    end else begin
+        dot_matrix_mode     <= ASYNC_OUT[1];
+        dot_matrix_mode_d <= dot_matrix_mode;
+    end
+end
+
+assign dot_matrix_mode_tick = dot_matrix_mode && (~dot_matrix_mode_d);
+
 endmodule

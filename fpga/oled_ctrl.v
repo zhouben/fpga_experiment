@@ -4,7 +4,11 @@ OLED I2C control
 Authors:  Zhou Changzhi
 
 Description:
-  i2c master side.
+  Work on i2c master side to refresh the whole OLED display each time, either init signal or disp_mode.
+  Display all white, all block, white and block interlace and reversed mode.
+
+  1. init       : initialize oled display
+  2. disp_mode  : switch four types of display mode on all oled display.
 */
 module oled_ctrl
 #(
@@ -21,13 +25,17 @@ module oled_ctrl
     output scl_oen,   // SCL Output Enable
     output reg busy,
     output reg done,
+    input       wen,    // for dot matrix print message
+    input [7:0] din,    // message (HEX), header and message
 
     input init,
-    input disp_mode     // posedge trigger.
+    input disp_mode,    // posedge trigger.
+    input dot_matrix_mode   // posedge trigger
 );
-localparam i2c_ctrl_state_idle = 0,
-    i2c_ctrl_state_init = 1,
-    i2c_ctrl_state_disp = 2;
+localparam I2C_CTRL_STATE_IDLE = 0,
+    I2C_CTRL_STATE_INIT = 1,
+    I2C_CTRL_STATE_DISP = 2,
+    I2C_CTRL_STATE_DOT_MATRIX = 3;
 
 reg write_en;
 reg init_d1;
@@ -47,6 +55,15 @@ wire        oled_disp_done;
 wire [7:0]  oled_disp_reg_addr;
 wire [7:0]  oled_disp_reg_data;
 wire        oled_disp_write_i2c_en;
+
+reg         oled_dot_matrix_rst_n   ;
+wire        oled_dot_matrix_rdy     ;
+wire        oled_dot_matrix_done    ;
+wire [7:0]  oled_dot_matrix_reg_addr;
+wire [7:0]  oled_dot_matrix_reg_data;
+wire        oled_dot_matrix_i2c_wen ;
+
+
 
 // i2c control
 reg  [7:0]  i2c_reg_addr;
@@ -79,6 +96,20 @@ oled_disp oled_disp
     .reg_data    (oled_disp_reg_data     ),
     .i2c_write_en(oled_disp_write_i2c_en ),
     .i2c_done    (i2c_done               )
+);
+
+oled_dot_matrix_disp oled_dot_matrix_disp
+(
+    .clk            (clk                        ),
+    .rst_n          (oled_dot_matrix_rst_n      ),
+    .rdy            (oled_dot_matrix_rdy        ),
+    .wen            (wen                        ),
+    .din            (din                        ),
+    .done           (oled_dot_matrix_done       ),
+    .reg_addr       (oled_dot_matrix_reg_addr   ),
+    .reg_data       (oled_dot_matrix_reg_data   ),
+    .i2c_wen        (oled_dot_matrix_i2c_wen    ),
+    .i2c_done       (i2c_done                   )
 );
 
 // i2c Master
@@ -121,54 +152,59 @@ assign init_rising = init_d1 & (~init_d2);
 
 always @(posedge clk) begin
     if (~reset) begin
-        i2c_ctrl_state <= i2c_ctrl_state_idle;
+        i2c_ctrl_state <= I2C_CTRL_STATE_IDLE;
     end else begin
         i2c_ctrl_state <= i2c_ctrl_state_next;
     end
 end
+
+always @(posedge clk) begin
+    if (~reset) begin
+        oled_init_start <= 1'b0;
+        oled_disp_start <= 1'b0;
+        oled_dot_matrix_rst_n   <= 1'b0;
+    end else begin
+        oled_init_start <= ((i2c_ctrl_state == I2C_CTRL_STATE_IDLE) && (i2c_ctrl_state_next == I2C_CTRL_STATE_INIT)) ? 1'b1 : 1'b0;
+        oled_disp_start <= ((i2c_ctrl_state == I2C_CTRL_STATE_IDLE) && (i2c_ctrl_state_next == I2C_CTRL_STATE_DISP)) ? 1'b1 : 1'b0;
+        oled_dot_matrix_rst_n   <= 1'b1;
+    end
+end
+
 always @(*) begin
     i2c_reg_addr    <= 8'bx;
     i2c_reg_data    <= 8'bx;
     i2c_write_en    <= 1'bx;
     busy            <= 1'b0;
     done            <= 1'b0;
-    oled_init_start <= 1'b0;
-    oled_disp_start <= 1'b0;
     i2c_ctrl_state_next <= i2c_ctrl_state;
     case (i2c_ctrl_state)
-        i2c_ctrl_state_idle: begin
+        I2C_CTRL_STATE_IDLE: begin
+            i2c_reg_addr            <= oled_dot_matrix_reg_addr;
+            i2c_reg_data            <= oled_dot_matrix_reg_data;
+            i2c_write_en            <= oled_dot_matrix_i2c_wen;
+            done                    <= oled_dot_matrix_done;
             if (init_rising) begin
-                i2c_ctrl_state_next <= i2c_ctrl_state_init;
-                i2c_reg_addr        <= oled_init_reg_addr;
-                i2c_reg_data        <= oled_init_reg_data;
-                i2c_write_en        <= oled_init_write_i2c_en;
-                oled_init_start     <= 1'b1;
-                busy                <= 1'b1;
+                i2c_ctrl_state_next <= I2C_CTRL_STATE_INIT;
             end
             else if (disp_mode) begin
-                i2c_ctrl_state_next <= i2c_ctrl_state_disp; 
-                i2c_reg_addr        <= oled_disp_reg_addr;
-                i2c_reg_data        <= oled_disp_reg_data;
-                i2c_write_en        <= oled_disp_write_i2c_en;
-                oled_disp_start     <= 1'b1;
-                busy                <= 1'b1;
+                i2c_ctrl_state_next <= I2C_CTRL_STATE_DISP; 
             end
         end
-        i2c_ctrl_state_init: begin
+        I2C_CTRL_STATE_INIT: begin
             i2c_reg_addr <= oled_init_reg_addr;
             i2c_reg_data <= oled_init_reg_data;
             i2c_write_en <= oled_init_write_i2c_en;
             busy         <= 1'b1;
             done         <= oled_init_done;
-            if (oled_init_done) i2c_ctrl_state_next <= i2c_ctrl_state_idle;
+            if (oled_init_done) i2c_ctrl_state_next <= I2C_CTRL_STATE_IDLE;
         end
-        i2c_ctrl_state_disp: begin
+        I2C_CTRL_STATE_DISP: begin
             i2c_reg_addr <= oled_disp_reg_addr;
             i2c_reg_data <= oled_disp_reg_data;
             i2c_write_en <= oled_disp_write_i2c_en;
             busy         <= 1'b1;
             done         <= oled_disp_done;
-            if (oled_disp_done) i2c_ctrl_state_next <= i2c_ctrl_state_idle;
+            if (oled_disp_done) i2c_ctrl_state_next <= I2C_CTRL_STATE_IDLE;
         end
     endcase
 end

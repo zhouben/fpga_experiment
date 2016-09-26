@@ -100,7 +100,7 @@ module i2c_master
             data_out  <= {(8 * DATA_BYTES){1'b0}};
 
             scl_count <= 2'b10;
-            clk_count <= {I2C_CLK_WIDTH{1'b0}};;
+            clk_count <= {I2C_CLK_WIDTH{1'b0}};
         end
         else begin
             sda_s <= sda_in;
@@ -122,7 +122,7 @@ module i2c_master
                     else begin
                         sda_reg <= open_drain ? 1'b0 : 1'b1;
                         oen_reg <= 1'b1;
-                        clk_count <= {I2C_CLK_WIDTH{1'b0}};;
+                        clk_count <= {I2C_CLK_WIDTH{1'b0}};
                     end
                 end
 

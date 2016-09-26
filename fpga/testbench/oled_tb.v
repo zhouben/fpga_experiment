@@ -23,7 +23,7 @@ reg clock;
 reg [7:0]  slave_recv_data[0:255];
 reg [7:0]  master_send_data[0:255];
 reg [7:0]  master_recv_data[0:255];
-wire        master_done;
+wire        oled_disp_done;
 
 wire SDA, SCL;
 wire [11:0] clk_div = 100;
@@ -55,7 +55,11 @@ wire master_scl_oen;
 
 reg [7:0] data_received;
 reg config_init;
-reg all_black_disp;
+reg disp_mode;
+reg dot_matrix_mode;
+
+reg [7:0]   print_message_data;
+reg         print_message_wen;
 
 //
 wire       ram_ena;
@@ -63,6 +67,7 @@ wire [7:0] ram_addra;
 wire [7:0] ram_douta;
 
 integer i;
+integer fp_r;
 
 assign SDA = (master_sda_oen == 0 ) ? 1'b0 : (slave_sda_oen  ? 1'bz : slave_sda_out );
 assign SCL = (master_scl_oen == 0 ) ? 1'b0 : 1'bz;
@@ -94,12 +99,13 @@ oled_ctrl
     .scl_oen(master_scl_oen),   // SCL Output Enable
 
     .busy(),
-    .done(master_done),
+    .done(oled_disp_done),
+    .wen(print_message_wen),
+    .din(print_message_data),
 
     .init(config_init),
-    .all_black_disp(all_black_disp),
-    .all_white_disp(),
-    .interlace_disp()
+    .disp_mode(disp_mode),
+    .dot_matrix_mode(dot_matrix_mode)
 );
 
 // i2c Slave
@@ -128,44 +134,121 @@ i2c_slave #(
     .scl_oen    (slave_scl_oen)
 );
 
+task init_oled_disp;
+    begin
+        fp_r = $fopen("oled_disp_init.txt", "r");
+        $display("fp_r: %x", fp_r);
+        if (fp_r == 0) begin
+            $finish;
+        end
+
+        // kick off configure oled
+        #100
+        config_init <= 1'b1;
+
+        #40
+        config_init <= 1'b0;
+
+        wait (oled_disp_done == 1'b1);
+        $display("Init oled display completed!");
+        #100
+        $fclose(fp_r);
+    end
+endtask
+
+task all_black_oled_disp;
+    begin
+        #100
+        fp_r = $fopen("oled_disp_all_black.txt", "r");
+        $display("fp_r: %x", fp_r);
+        if (fp_r == 0) begin
+            $warning("zcz failed to open");
+            //$finish;
+        end
+
+        // kick off configure oled
+        #100
+        disp_mode <=1'b1;
+        #40
+        disp_mode <=1'b0;
+
+        wait (oled_disp_done == 1'b1);
+        $display("black the whole oled display completed!");
+        #100
+        $fclose(fp_r);
+    end
+endtask
+
+task oled_dot_matrix_disp_task;
+    begin
+        fp_r = $fopen("oled_dot_matrix_print_msg.txt", "r");
+        $display("fp_r: %x", fp_r);
+        if (fp_r == 0) begin
+            $finish;
+        end
+
+        print_message_wen   <= 1'b0;
+
+        // kick off configure oled
+        #100
+        @(posedge clock)
+        print_message_data  <= 8'h35;
+        print_message_wen   <= 1'b1;
+        @(posedge clock)
+        print_message_data  <= 8'hab;
+        print_message_wen   <= 1'b1;
+        @(posedge clock)
+        print_message_data  <= 8'hcd;
+        print_message_wen   <= 1'b1;
+        @(posedge clock)
+        print_message_data  <= 8'hx;
+        print_message_wen   <= 1'b0;
+
+        wait (oled_disp_done == 1'b1);
+        $display("Init oled display completed!");
+        #100
+        $fclose(fp_r);
+    end
+endtask
+
 // Initial conditions; setup
 initial begin
     //$timeformat(-9,1, "ns", 12);
 
     // Initial Conditions
     reset <= 1'b0;
-    config_init <= 1'b0;
-    all_black_disp <=1'b0;
+    clock <= 1'b0;
 
+    config_init <= 1'b0;
+    disp_mode <=1'b0;
+    dot_matrix_mode <= 1'b0;
     slave_chip_addr  <= OLED_CHIP_ADDR;
 
-    // Initialize clock
-    #1
-    clock <= 1'b0;
 
     // Deassert reset
     #60
     reset <= 1'b1;
 
-    $display("Beginning configuring OLED's registers for initialization");
+    $display("Beginning configuring OLED's registers");
 
-    // kick off configure oled
-    #100
-    //config_init <= 1'b1;
-    all_black_disp <=1'b1;
-    #40
-    //config_init <= 1'b0;
-    all_black_disp <=1'b0;
+    oled_dot_matrix_disp_task();
+    oled_dot_matrix_disp_task();
+    //init_oled_disp();
+    //all_black_oled_disp();
 
-    wait (master_done == 1'b1);
-    $display("Init oled display completed!");
-    #1000 $finish;
+    $finish;
 end
 
+integer addr, data, cnt;
 // Save slave data to register
 always @ (posedge clock) begin
     if (slave_write_en) begin
-        $display("Writing to slave reg=%x data=%x", slave_reg_addr, slave_data_out);
+        cnt = $fscanf(fp_r, "%x %x", addr, data);
+        if((addr != slave_reg_addr) || (data != slave_data_out)) begin
+            $display("Writing to slave reg=%x data=%x, expected: %02X %02X <--- ERROR !!", slave_reg_addr, slave_data_out, addr, data);
+        end else begin
+            $display("Writing to slave reg=%x data=%x, expected: %02X %02X", slave_reg_addr, slave_data_out, addr, data);
+        end
         slave_recv_data[slave_reg_addr] <= slave_data_out;
     end
 end
