@@ -15,3 +15,5 @@ PCIe transfer experiment on MARS6 FPGA.
 1. add sh1sum module and testbench for modulesim.
 1. add oled dot matrix display module, just passed modelsim test parially.
 1. add python scripts to control 1.8" TFT display. Work well on Raspberry Pi.
+1. demonstrate how to use PLL\_BASE primitive to generate multiple clock.
+1. add demo project ddr\_demo to show how to use ddr3 mig, modelsim passed.
