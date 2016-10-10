@@ -1,0 +1,26 @@
+
+NET "clk_50m" LOC = T8 | TNM_NET = sys_clk_pin;
+TIMESPEC TS_sys_clk_pin = PERIOD sys_clk_pin 50000 kHz;
+
+##
+NET sw_rst_n                  LOC = L3 | IOSTANDARD = "LVCMOS33"; ## reset pushbutton
+##
+
+##################################################################################
+#SDRAM pin define
+##################################################################################
+NET leds_o<0>               LOC = C7 | IOSTANDARD = "LVCMOS33";
+NET leds_o<1>               LOC = E6 | IOSTANDARD = "LVCMOS33";
+NET leds_o<2>               LOC = C5 | IOSTANDARD = "LVCMOS33";
+NET leds_o<3>               LOC = F7 | IOSTANDARD = "LVCMOS33";
+NET leds_o<4>               LOC = D6 | IOSTANDARD = "LVCMOS33";
+NET leds_o<5>               LOC = E7 | IOSTANDARD = "LVCMOS33";
+NET leds_o<6>               LOC = D5 | IOSTANDARD = "LVCMOS33";
+NET leds_o<7>               LOC = C6 | IOSTANDARD = "LVCMOS33";
+
+NET sels_o<5>               LOC = D9  | IOSTANDARD = "LVCMOS33";
+NET sels_o<4>               LOC = E10 | IOSTANDARD = "LVCMOS33";
+NET sels_o<3>               LOC = F10 | IOSTANDARD = "LVCMOS33";
+NET sels_o<2>               LOC = F9  | IOSTANDARD = "LVCMOS33";
+NET sels_o<1>               LOC = E8  | IOSTANDARD = "LVCMOS33";
+NET sels_o<0>               LOC = D8  | IOSTANDARD = "LVCMOS33";
