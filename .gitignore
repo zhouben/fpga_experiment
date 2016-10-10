@@ -1,4 +1,5 @@
 /fpga/ipcore_dir/*
+/fpga/alinx_ipcore/*
 /fpga/ISEPrj/*
 /fpga/modelprj/work/*
 tags

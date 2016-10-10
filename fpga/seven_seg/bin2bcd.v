@@ -51,7 +51,7 @@ always @(posedge clk, negedge rst_n) begin
                     state   <= SHIFT;
                     if (bcd[ 3: 0] > 4) bcd[ 3: 0] <= bcd[ 3: 0] + 4'd3;
                     if (bcd[ 7: 4] > 4) bcd[ 7: 4] <= bcd[ 7: 4] + 4'd3;
-                    if (bcd[11:10] > 4) bcd[11:10] <= bcd[11:10] + 4'd3;
+                    if (bcd[11: 8] > 4) bcd[11: 8] <= bcd[11: 8] + 4'd3;
                     if (bcd[15:12] > 4) bcd[15:12] <= bcd[15:12] + 4'd3;
                     if (bcd[19:16] > 4) bcd[19:16] <= bcd[19:16] + 4'd3;
                     if (bcd[23:20] > 4) bcd[23:20] <= bcd[23:20] + 4'd3;

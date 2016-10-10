@@ -14,18 +14,26 @@
 
   <version xil_pn:ise_version="14.7" xil_pn:schema_version="2"/>
 
-  <files/>
+  <files>
+    <file xil_pn:name="rdfifo.v" xil_pn:type="FILE_VERILOG">
+      <association xil_pn:name="BehavioralSimulation" xil_pn:seqID="4"/>
+      <association xil_pn:name="Implementation" xil_pn:seqID="1"/>
+      <association xil_pn:name="PostMapSimulation" xil_pn:seqID="4"/>
+      <association xil_pn:name="PostRouteSimulation" xil_pn:seqID="4"/>
+      <association xil_pn:name="PostTranslateSimulation" xil_pn:seqID="4"/>
+    </file>
+  </files>
 
   <properties>
     <property xil_pn:name="Auto Implementation Top" xil_pn:value="false" xil_pn:valueState="non-default"/>
-    <property xil_pn:name="Device" xil_pn:value="xc6slx45t" xil_pn:valueState="non-default"/>
+    <property xil_pn:name="Device" xil_pn:value="xc6slx9" xil_pn:valueState="non-default"/>
     <property xil_pn:name="Device Family" xil_pn:value="Spartan6" xil_pn:valueState="non-default"/>
     <property xil_pn:name="Enable Internal Done Pipe" xil_pn:value="true" xil_pn:valueState="non-default"/>
     <property xil_pn:name="Implementation Stop View" xil_pn:value="PreSynthesis" xil_pn:valueState="non-default"/>
-    <property xil_pn:name="Implementation Top" xil_pn:value="Module|my_vio" xil_pn:valueState="non-default"/>
-    <property xil_pn:name="Implementation Top File" xil_pn:value="my_vio.ngc" xil_pn:valueState="non-default"/>
-    <property xil_pn:name="Implementation Top Instance Path" xil_pn:value="/my_vio" xil_pn:valueState="non-default"/>
-    <property xil_pn:name="Package" xil_pn:value="fgg484" xil_pn:valueState="default"/>
+    <property xil_pn:name="Implementation Top" xil_pn:value="Module|rdfifo" xil_pn:valueState="non-default"/>
+    <property xil_pn:name="Implementation Top File" xil_pn:value="rdfifo.ngc" xil_pn:valueState="non-default"/>
+    <property xil_pn:name="Implementation Top Instance Path" xil_pn:value="/rdfifo" xil_pn:valueState="non-default"/>
+    <property xil_pn:name="Package" xil_pn:value="ftg256" xil_pn:valueState="non-default"/>
     <property xil_pn:name="Preferred Language" xil_pn:value="Verilog" xil_pn:valueState="default"/>
     <property xil_pn:name="Project Generator" xil_pn:value="CoreGen" xil_pn:valueState="non-default"/>
     <property xil_pn:name="Property Specification in Project File" xil_pn:value="Store all values" xil_pn:valueState="default"/>
@@ -37,10 +45,10 @@
     <!--                                                                                  -->
     <!-- The following properties are for internal use only. These should not be modified.-->
     <!--                                                                                  -->
-    <property xil_pn:name="PROP_DesignName" xil_pn:value="my_vio" xil_pn:valueState="non-default"/>
+    <property xil_pn:name="PROP_DesignName" xil_pn:value="rdfifo" xil_pn:valueState="non-default"/>
     <property xil_pn:name="PROP_DevFamilyPMName" xil_pn:value="spartan6" xil_pn:valueState="default"/>
-    <property xil_pn:name="PROP_intProjectCreationTimestamp" xil_pn:value="2016-08-28T18:04:27" xil_pn:valueState="non-default"/>
-    <property xil_pn:name="PROP_intWbtProjectID" xil_pn:value="575EDF90201E45AE925FFBE1D0CBDCA6" xil_pn:valueState="non-default"/>
+    <property xil_pn:name="PROP_intProjectCreationTimestamp" xil_pn:value="2015-07-05T13:46:50" xil_pn:valueState="non-default"/>
+    <property xil_pn:name="PROP_intWbtProjectID" xil_pn:value="359E876CC54747C2A35C83DE1CD22238" xil_pn:valueState="non-default"/>
     <property xil_pn:name="PROP_intWorkingDirLocWRTProjDir" xil_pn:value="Same" xil_pn:valueState="non-default"/>
     <property xil_pn:name="PROP_intWorkingDirUsed" xil_pn:value="No" xil_pn:valueState="non-default"/>
   </properties>

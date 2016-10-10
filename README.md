@@ -18,3 +18,10 @@ PCIe transfer experiment on MARS6 FPGA.
 1. demonstrate how to use PLL\_BASE primitive to generate multiple clock.
 1. add demo project ddr\_demo to show how to use ddr3 mig, modelsim passed.
 1. add seven segment display module and test bench, passed in Alinx platform.
+1. add an experiment(sdram\_top\_exp) to read/write sdram by sdram\_top.
+    1. improve sdram\_model.v for test bench with the maximum of 64k WORDs.
+    1. fpga/sdram\_top\_exp.xise is the project file.
+    1. fpga/sdram\_ip/tb is the test bench for sdram\_top
+1. add an interface(sdram\_mcb) and related test bench.
+    1. sdram\_mcb\_tb.do is the script to test sdram\_mcb mod
+    1. improve sdram\_model to meet writing at the last several WORDs every row.
