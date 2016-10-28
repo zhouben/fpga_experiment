@@ -1,7 +1,7 @@
 ##############################################################
 #
 # Xilinx Core Generator version 14.7
-# Date: Wed Nov 09 15:05:19 2016
+# Date: Sun Nov 27 03:09:32 2016
 #
 ##############################################################
 #
@@ -186,7 +186,7 @@ CSET tid_width=8
 CSET tkeep_width=4
 CSET tstrb_width=4
 CSET tuser_width=4
-CSET underflow_flag=false
+CSET underflow_flag=true
 CSET underflow_flag_axi=false
 CSET underflow_sense=Active_High
 CSET underflow_sense_axi=Active_High
@@ -210,4 +210,4 @@ CSET wuser_width=1
 MISC pkg_timestamp=2012-11-19T12:39:56Z
 # END Extra information
 GENERATE
-# CRC: d49bfa1a
+# CRC: 45895fcb

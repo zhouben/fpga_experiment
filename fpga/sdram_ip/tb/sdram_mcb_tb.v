@@ -53,8 +53,10 @@ reg [15:0]  host_data_array[HOST_DATA_DEPTH - 1:0];
 sdram_mcb u0
 (
     .clk_sdram      (clk_100m      ),   // input           100MHz
-    .clk_rw         (clk_50m       ),   // input           
-    .rst_n          (rst_n         ),   // input           
+    .clk_sdram_ref  (clk_100m      ),   // input           100MHz
+    .clk_wr         (clk_50m       ),   // input
+    .clk_rd         (clk_50m       ),   // input
+    .rst_n          (rst_n         ),   // input
     .wr_load        (wr_load       ),   // input           users request a new write operation
     .wr_addr        (wr_addr       ),   // input [23:0]    write base address, {Bank{1:0], Row[12:0], Col[8:0]}
     .wr_length      (wr_length     ),   // input [23:0]    write length, 0's based.
@@ -62,16 +64,16 @@ sdram_mcb u0
     .din            (din           ),   // input [15:0]    write data input
     .wr_done        (wr_done       ),   // output          reply users currenct write complete.
     .wr_rdy         (wr_rdy        ),   // output          write fifo is valid
-    .wr_overrun     (wr_overrun    ),   // output          
-    .rd_load        (rd_load       ),   // input           
-    .rd_addr        (rd_addr       ),   // input [23:0]    
-    .rd_length      (rd_length     ),   // input [23:0]    
+    .wr_overrun     (wr_overrun    ),   // output
+    .rd_load        (rd_load       ),   // input
+    .rd_addr        (rd_addr       ),   // input [23:0]
+    .rd_length      (rd_length     ),   // input [23:0]
     .rd_req         (rd_req        ),   // input           users request data read
     .dout           (dout          ),   // output [15:0]   data output for read
     .rd_done        (rd_done       ),   // output          reply users currenct read complete.
     .rd_fifo_cnt    (rd_fifo_cnt   ),   // output [9:0]    how many data units in rd fifo
     .rd_fifo_empty  (rd_fifo_empty ),
-    .rd_underrun    (rd_underrun   ),   // output          
+    .rd_underrun    (rd_underrun   ),   // output
 
     .S_CLK      (S_CLK   ),        //sdram clock
     .S_CKE      (S_CKE   ),        //sdram clock enable
@@ -199,7 +201,57 @@ task tsk_read;
             while(rd_cnt < data_length) begin
                 @(posedge clk_50m)
                 if (rd_req_d == 1'b1) begin
-                    if (dout != host_data_array[base_addr + rd_cnt]) begin
+                    if (dout !== host_data_array[base_addr + rd_cnt]) begin
+                        $display("[%t] %2d data %04X, expect %04X", $realtime, rd_cnt, dout, host_data_array[base_addr + rd_cnt]);
+                        $display("Test FAILED");
+                        $finish(2);
+                    end
+                    rd_cnt = rd_cnt + 1'd1;
+                end
+            end
+        join
+        @(posedge clk_50m);
+    end
+endtask
+
+task tsk_delay_read;
+    input [23:0] base_addr;
+    input [23:0] data_length;
+    input integer delay_cycles;
+    integer     rd_cnt;
+    integer     error_cnt;
+    reg         rd_req_d;
+    begin
+        if (rd_load || rd_req)
+        begin
+            $display("[%t] initial state of rd_load or rd_req should be 0", $realtime);
+            $display("Test FAILED");
+            $finish(2);
+        end
+        rd_cnt = 0;
+        @(posedge clk_50m)
+        rd_load     = 1'b1;
+        rd_addr     = base_addr;
+        rd_length   = data_length;
+        @(posedge clk_50m)
+        rd_load     = 1'b0;
+        wait (rd_fifo_cnt > 0);
+        repeat (delay_cycles) @(posedge clk_50m);
+        $display("[%t] task delay read begin to read", $realtime);
+        fork
+            while(rd_cnt < data_length) begin
+                @(posedge clk_50m or rd_fifo_empty)
+                if (rd_fifo_empty) rd_req = 1'b0;
+                else               rd_req = 1'b1;
+            end
+            while(rd_cnt < data_length) begin
+                @(posedge clk_50m)
+                rd_req_d <= rd_req;
+            end
+            while(rd_cnt < data_length) begin
+                @(posedge clk_50m)
+                if (rd_req_d == 1'b1) begin
+                    if (dout !== host_data_array[base_addr + rd_cnt]) begin
                         $display("[%t] %2d data %04X, expect %04X", $realtime, rd_cnt, dout, host_data_array[base_addr + rd_cnt]);
                         $display("Test FAILED");
                         $finish(2);
@@ -246,7 +298,40 @@ task tsk_mixed_write_read_test;
     begin
         $display("[%t] Begin mixed write/read test %d WORDs each time, by %d times", $realtime, data_depth, times);
         wr_addr = ADDR_A;
-        #100 tsk_write(wr_addr, data_depth); 
+        #100 tsk_write(wr_addr, data_depth);
+        n_ = 0;
+        while(n_ < times) begin
+            rd_addr = wr_addr;
+            wr_addr = (wr_addr == ADDR_A) ? ADDR_B : ADDR_A;
+            $display("[%t] No.%2d Write %6X  Read %6X", $realtime, n_, wr_addr, rd_addr);
+            for(i_ = 0; i_ < data_depth; i_ = i_ + 1)
+                host_data_array[wr_addr + i_] = $random;
+            $display("[%t] No.%2d Write %6X  Read %6X complete", $realtime, n_, wr_addr, rd_addr);
+
+            fork
+                tsk_write(wr_addr, data_depth);
+                tsk_read(rd_addr, data_depth);
+            join
+            n_ = n_ + 1;
+        end
+    end
+endtask
+
+task tsk_simulate_sdram_vga_test;
+    input [23:0] data_depth;
+    input integer times;
+    integer     rd_cnt;
+    reg         rd_req_d;
+    integer     wr_addr;
+    integer     rd_addr;
+    integer     n_;
+    integer     i_;
+    localparam     ADDR_A = 0;
+    localparam     ADDR_B = 32768;
+    begin
+        $display("[%t] Begin simulation for sdram_vga write/read test %d WORDs each time, by %d times", $realtime, data_depth, times);
+        wr_addr = ADDR_A;
+        #100 tsk_write(wr_addr, data_depth);
         n_ = 0;
         while(n_ < times) begin
             rd_addr = wr_addr;
@@ -256,11 +341,10 @@ task tsk_mixed_write_read_test;
                 host_data_array[wr_addr + i_] = $random;
             fork
                 tsk_write(wr_addr, data_depth);
-                tsk_read(rd_addr, data_depth);
+                tsk_delay_read(rd_addr, data_depth, 1500);
             join
             n_ = n_ + 1;
         end
-        
     end
 endtask
 
@@ -286,6 +370,7 @@ initial begin
 
     // write and then read 0x1234 WORDs in parallel by 5 times.
     #100 tsk_mixed_write_read_test(24'h1234, 5);
+    #100 tsk_simulate_sdram_vga_test(24'h800, 2);
 
     $display("[%t] Test PASSED", $realtime);
     $finish(0);

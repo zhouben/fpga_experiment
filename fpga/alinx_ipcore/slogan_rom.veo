@@ -27,55 +27,35 @@
 *******************************************************************************/
 
 /*******************************************************************************
-*     Generated from core with identifier: xilinx.com:ip:fifo_generator:9.3    *
+*     Generated from core with identifier: xilinx.com:ip:blk_mem_gen:7.3       *
 *                                                                              *
-*     Rev 1. The FIFO Generator is a parameterizable first-in/first-out        *
-*     memory queue generator. Use it to generate resource and performance      *
-*     optimized FIFOs with common or independent read/write clock domains,     *
-*     and optional fixed or programmable full and empty flags and              *
-*     handshaking signals.  Choose from a selection of memory resource         *
-*     types for implementation.  Optional Hamming code based error             *
-*     detection and correction as well as error injection capability for       *
-*     system test help to insure data integrity.  FIFO width and depth are     *
-*     parameterizable, and for native interface FIFOs, asymmetric read and     *
-*     write port widths are also supported.                                    *
+*     The Xilinx LogiCORE IP Block Memory Generator replaces the Dual Port     *
+*     Block Memory and Single Port Block Memory LogiCOREs, but is not a        *
+*     direct drop-in replacement.  It should be used in all new Xilinx         *
+*     designs. The core supports RAM and ROM functions over a wide range of    *
+*     widths and depths. Use this core to generate block memories with         *
+*     symmetric or asymmetric read and write port widths, as well as cores     *
+*     which can perform simultaneous write operations to separate              *
+*     locations, and simultaneous read operations from the same location.      *
+*     For more information on differences in interface and feature support     *
+*     between this core and the Dual Port Block Memory and Single Port         *
+*     Block Memory LogiCOREs, please consult the data sheet.                   *
 *******************************************************************************/
-
-// Interfaces:
-//    AXI4Stream_MASTER_M_AXIS
-//    AXI4Stream_SLAVE_S_AXIS
-//    AXI4_MASTER_M_AXI
-//    AXI4_SLAVE_S_AXI
-//    AXI4Lite_MASTER_M_AXI
-//    AXI4Lite_SLAVE_S_AXI
-//    master_aclk
-//    slave_aclk
-//    slave_aresetn
 
 // The following must be inserted into your Verilog file for this
 // core to be instantiated. Change the instance name and port connections
 // (in parentheses) to your own signal names.
 
 //----------- Begin Cut here for INSTANTIATION Template ---// INST_TAG
-sdram_wr_fifo your_instance_name (
-  .rst(rst), // input rst
-  .wr_clk(wr_clk), // input wr_clk
-  .rd_clk(rd_clk), // input rd_clk
-  .din(din), // input [15 : 0] din
-  .wr_en(wr_en), // input wr_en
-  .rd_en(rd_en), // input rd_en
-  .dout(dout), // output [15 : 0] dout
-  .full(full), // output full
-  .almost_full(almost_full), // output almost_full
-  .overflow(overflow), // output overflow
-  .empty(empty), // output empty
-  .rd_data_count(rd_data_count), // output [9 : 0] rd_data_count
-  .wr_data_count(wr_data_count) // output [9 : 0] wr_data_count
+slogan_rom your_instance_name (
+  .clka(clka), // input clka
+  .addra(addra), // input [12 : 0] addra
+  .douta(douta) // output [7 : 0] douta
 );
 // INST_TAG_END ------ End INSTANTIATION Template ---------
 
-// You must compile the wrapper file sdram_wr_fifo.v when simulating
-// the core, sdram_wr_fifo. When compiling the wrapper file, be sure to
+// You must compile the wrapper file slogan_rom.v when simulating
+// the core, slogan_rom. When compiling the wrapper file, be sure to
 // reference the XilinxCoreLib Verilog simulation library. For detailed
 // instructions, please refer to the "CORE Generator Help".
 

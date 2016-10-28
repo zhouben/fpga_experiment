@@ -58,6 +58,14 @@ assign sdram_data = (state == READ_STATE || state == READ_END_0 || state == READ
 assign rst = sdram_cs_n;
 assign cmd = {sdram_cs_n, sdram_ras_n, sdram_cas_n, sdram_we_n};
 
+integer _i;
+
+initial begin
+    for (_i = 0; _i < MEMORY_DEPTH; _i = _i + 1) begin
+        memory[_i] = 0;
+    end
+end
+
 
 always @(posedge sdram_clk, posedge rst) begin
     if (rst) begin
@@ -145,6 +153,20 @@ function integer clogb2(input integer depth);
     begin
         for (clogb2=0; depth > 0; clogb2 = clogb2 + 1)
             depth = depth >> 1;
+    end
+endfunction
+
+function integer dump_memory(input reg [8*32 -1 :0] file_name);
+    integer fp_w;
+    integer cnt;
+    begin
+        fp_w = $fopen(file_name, "w");
+        cnt = 0;
+        while (cnt < MEMORY_DEPTH) begin
+            $fwrite(fp_w, "%d\n", memory[cnt]);
+            cnt = cnt + 1;
+        end
+        $fclose(fp_w);
     end
 endfunction
 

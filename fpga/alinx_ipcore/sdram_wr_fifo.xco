@@ -1,7 +1,7 @@
 ##############################################################
 #
 # Xilinx Core Generator version 14.7
-# Date: Mon Oct 31 14:59:21 2016
+# Date: Sun Nov 27 01:49:02 2016
 #
 ##############################################################
 #
@@ -41,7 +41,7 @@ SELECT FIFO_Generator xilinx.com:ip:fifo_generator:9.3
 # BEGIN Parameters
 CSET add_ngc_constraint_axi=false
 CSET almost_empty_flag=false
-CSET almost_full_flag=false
+CSET almost_full_flag=true
 CSET aruser_width=1
 CSET awuser_width=1
 CSET axi_address_width=32
@@ -145,7 +145,7 @@ CSET input_depth_wrch=16
 CSET interface_type=Native
 CSET output_data_width=16
 CSET output_depth=1024
-CSET overflow_flag=false
+CSET overflow_flag=true
 CSET overflow_flag_axi=false
 CSET overflow_sense=Active_High
 CSET overflow_sense_axi=Active_High
@@ -210,4 +210,4 @@ CSET wuser_width=1
 MISC pkg_timestamp=2012-11-19T12:39:56Z
 # END Extra information
 GENERATE
-# CRC: 68690b53
+# CRC: 9c5a7c9e

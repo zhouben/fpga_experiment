@@ -20,41 +20,44 @@
 
 `timescale 1ns/1ps
 module sdram_mcb(
-    input           clk_sdram   , // 100MHz
-    input           clk_rw      ,
-    input           rst_n       ,
+    input           clk_sdram       , // 100MHz
+    input           clk_sdram_ref   ,
+    input           clk_wr          ,
+    input           clk_rd          ,
+    input           rst_n           ,
 
     // users interface
-    input           wr_load     ,   // users request a new write operation
-    input [23:0]    wr_addr     ,   // write base address, {Bank{1:0], Row[12:0], Col[8:0]}
-    input [23:0]    wr_length   ,   // write length, 0's based.
-    input           wr_req      ,   // write data input valid
-    input [15:0]    din         ,   // write data input
-    output          wr_done     ,   // reply users currenct write complete.
-    output          wr_rdy      ,   // write fifo is valid
-    output          wr_overrun  ,
+    output          mem_rdy         ,
+    input           wr_load         ,   // users request a new write operation
+    input [23:0]    wr_addr         ,   // write base address, {Bank{1:0], Row[12:0], Col[8:0]}
+    input [23:0]    wr_length       ,   // write length, 0's based.
+    input           wr_req          ,   // write data input valid
+    input [15:0]    din             ,   // write data input
+    output          wr_done         ,   // reply users currenct write complete.
+    output          wr_rdy          ,   // write fifo is valid
+    output          wr_overrun      ,
 
-    input           rd_load     ,
-    input [23:0]    rd_addr     ,
-    input [23:0]    rd_length   ,
-    input           rd_req      ,   // users request data read
-    output [15:0]   dout        ,   // data output for read
-    output          rd_done     ,   // replay users currenct write complete.
-    output [9:0]    rd_fifo_cnt ,   // how many data units in rd fifo
-    output          rd_fifo_empty,
-    output          rd_underrun ,
+    input           rd_load         ,
+    input [23:0]    rd_addr         ,
+    input [23:0]    rd_length       ,
+    input           rd_req          ,   // users request data read
+    output [15:0]   dout            ,   // data output for read
+    output          rd_done         ,   // replay users currenct write complete.
+    output [9:0]    rd_fifo_cnt     ,   // how many data units in rd fifo
+    output          rd_fifo_empty   ,
+    output          rd_underrun     ,
 
     // sdram interface
-	output			S_CLK   ,   //sdram clock
-	output			S_CKE   ,   //sdram clock enable
-	output			S_NCS   ,   //sdram chip select
-	output			S_NWE   ,   //sdram write enable
-	output			S_NCAS  ,   //sdram column address strobe
-	output			S_NRAS  ,   //sdram row address strobe
-	output [1:0] 	S_DQM   ,   //sdram data enable
-	output [1:0]	S_BA    ,   //sdram bank address
-	output [12:0]	S_A     ,   //sdram address
-	inout  [15:0]	S_DB        //sdram data
+	output			S_CLK           ,   //sdram clock
+	output			S_CKE           ,   //sdram clock enable
+	output			S_NCS           ,   //sdram chip select
+	output			S_NWE           ,   //sdram write enable
+	output			S_NCAS          ,   //sdram column address strobe
+	output			S_NRAS          ,   //sdram row address strobe
+	output [1:0] 	S_DQM           ,   //sdram data enable
+	output [1:0]	S_BA            ,   //sdram bank address
+	output [12:0]	S_A             ,   //sdram address
+	inout  [15:0]	S_DB                //sdram data
 
 );
 
@@ -92,6 +95,8 @@ reg         sdram_wr_req;
 wire        wr_fifo_ren;
 wire[15:0]  wr_fifo_dout;
 wire        wr_fifo_full;
+wire        wr_fifo_almost_full;
+wire        wr_fifo_overflow;
 reg         wr_pending; // current wr transaction is still going on.
 wire        wr_fifo_empty;
 wire [9:0]  wr_fifo_rd_count;
@@ -124,13 +129,14 @@ reg [9:0]   sdrd_byte;
 reg         sdram_rd_req;
 reg         rd_pending; // current rd transaction is still going on.
 wire        rd_fifo_wen;
-wire        rd_fifo_ren;
 wire        rd_fifo_full;
 wire [15:0] rd_fifo_din;
 wire [9:0]  rd_fifo_wr_count;
 wire [9:0]  rd_fifo_rd_count;
 
-assign S_CLK = clk_sdram;
+assign S_CLK   = clk_sdram_ref;
+assign S_DQM   = 2'b0;  //sdram data enable
+assign mem_rdy = sdram_init_done;
 
 /****************************************************************************\
 *                                                                            *
@@ -141,9 +147,9 @@ assign wr_load_pulse    = wr_load_d2 & ~wr_load_d3;
 assign wr_done_internal = (state == WR_DONE) ? 1'b1 : 1'b0;
 assign wr_done          = wr_done_d2 & ~wr_done_d3;
 assign stage_wr_bytes   = (10'd512 - {1'b0, wr_addr_r[8:0]}) < wr_length_r ? (10'd512 - {1'b0, wr_addr_r[8:0]}) : wr_length_r;
-assign wr_rdy = (sdram_init_done && ~wr_fifo_full);
+assign wr_rdy = (sdram_init_done && ~wr_fifo_almost_full);
 
-always @(posedge clk_rw, negedge rst_n) begin
+always @(posedge clk_wr, negedge rst_n) begin
     if (~rst_n) begin
         wr_done_d1  <= 1'b0;
         wr_done_d2  <= 1'b0;
@@ -282,13 +288,40 @@ end
 always @(*) begin
     rw_toggle_next  <= rw_toggle;
     cnt_next        <= cnt;
+    state_next      <= state;
     case (state)
         IDLE: begin
             state_next <= IDLE;
             case ({rw_toggle, wr_pending, rd_pending})
-                3'b011, 3'b010, 3'b110  : if(/*wr_fifo_wr_count_d2*/ wr_fifo_rd_count >= stage_wr_bytes ) state_next <= PRE_WR;
-                3'b000, 3'b100          : state_next <= IDLE;
-                3'b001, 3'b111, 3'b101  : if(rd_fifo_wr_count + stage_rd_bytes < 1023) state_next <= PRE_RD;
+                3'b000, 3'b100          : begin
+                    state_next <= IDLE;
+                end
+                3'b010, 3'b110: begin
+                    if( wr_fifo_rd_count >= stage_wr_bytes ) begin
+                        /*wr_fifo_wr_count_d2*/
+                        state_next <= PRE_WR;
+                    end
+                end
+                3'b001, 3'b101: begin
+                    if(rd_fifo_wr_count + stage_rd_bytes < 1023) begin
+                        state_next <= PRE_RD;
+                    end
+                end
+                3'b011: begin
+                    if( wr_fifo_rd_count >= stage_wr_bytes ) begin
+                        /*wr_fifo_wr_count_d2*/
+                        state_next <= PRE_WR;
+                    end else if(rd_fifo_wr_count + stage_rd_bytes < 1023) begin
+                        state_next <= PRE_RD;
+                    end
+                end
+                3'b111: begin
+                    if(rd_fifo_wr_count + stage_rd_bytes < 1023) begin
+                        state_next <= PRE_RD;
+                    end else if( wr_fifo_rd_count >= stage_wr_bytes ) begin
+                        state_next <= PRE_WR;
+                    end
+                end
             endcase
         end
         PRE_WR: begin
@@ -302,7 +335,7 @@ always @(*) begin
         WR_STAGE_CPLT: begin
             rw_toggle_next  <= ~rw_toggle;
             if (wr_length_r == 0) begin
-                state_next  <= WR_DONE; 
+                state_next  <= WR_DONE;
                 cnt_next    <= 2'd0;
             end else begin
                 state_next  <= IDLE;
@@ -428,46 +461,48 @@ end
 sdram_top sdram_top
 (
 	//global clock
-	.clk				(clk_sdram      ),			//sdram reference clock
-	.rst_n				(rst_n          ),			//global reset
+	.clk				(clk_sdram      ),  //sdram reference clock
+	.rst_n				(rst_n          ),  //global reset
 
 	//internal interface
 	.sdram_wr_req		(sdram_wr_req   ), 	//sdram write request
 	.sdram_rd_req		(sdram_rd_req   ), 	//sdram write ack
 	.sdram_wr_ack		(wr_fifo_ren    ), 	//sdram read request
-	.sdram_rd_ack		(rd_fifo_wen    ),		//sdram read ack
+	.sdram_rd_ack		(rd_fifo_wen    ),	//sdram read ack
 	.sys_wraddr			(wr_addr_r      ), 	//sdram write address
 	.sys_rdaddr			(rd_addr_r      ), 	//sdram read address
-	.sys_data_in		(wr_fifo_dout   ),    	//fifo 2 sdram data input
-	.sys_data_out		(rd_fifo_din    ),   	//sdram 2 fifo data input
+	.sys_data_in		(wr_fifo_dout   ),  //fifo 2 sdram data input
+	.sys_data_out		(rd_fifo_din    ),  //sdram 2 fifo data input
 	.sdram_init_done	(sdram_init_done),	//sdram init done
 
 	//burst length
-	.sdwr_byte			(sdwr_byte      ),		//sdram write burst length
-	.sdrd_byte			(sdrd_byte      ),		//sdram read burst length
+	.sdwr_byte			(sdwr_byte      ),	//sdram write burst length
+	.sdrd_byte			(sdrd_byte      ),	//sdram read burst length
 
 	//sdram interface
 //	.sdram_clk			(sdram_clk),		//sdram clock
-	.sdram_cke			(S_CKE          ),		//sdram clock enable
-	.sdram_cs_n			(S_NCS          ),		//sdram chip select
-	.sdram_we_n			(S_NWE          ),		//sdram write enable
-	.sdram_ras_n		(S_NRAS         ),		//sdram column address strobe
-	.sdram_cas_n		(S_NCAS         ),		//sdram row address strobe
-	.sdram_ba			(S_BA           ),			//sdram data enable (H:8)
-	.sdram_addr			(S_A            ),		//sdram data enable (L:8)
-	.sdram_data			(S_DB           )		//sdram bank address
+	.sdram_cke			(S_CKE          ),	//sdram clock enable
+	.sdram_cs_n			(S_NCS          ),	//sdram chip select
+	.sdram_we_n			(S_NWE          ),	//sdram write enable
+	.sdram_ras_n		(S_NRAS         ),	//sdram column address strobe
+	.sdram_cas_n		(S_NCAS         ),	//sdram row address strobe
+	.sdram_ba			(S_BA           ),	//sdram data enable (H:8)
+	.sdram_addr			(S_A            ),	//sdram data enable (L:8)
+	.sdram_data			(S_DB           )	//sdram bank address
 //	.sdram_udqm			(sdram_udqm),		//sdram address
 //	.sdram_ldqm			(sdram_ldqm)		//sdram data
 );
 sdram_wr_fifo sdram_wr_fifo (
   .rst(~rst_n), // input rst
-  .wr_clk(clk_rw), // input wr_clk
+  .wr_clk(clk_wr), // input wr_clk
   .rd_clk(clk_sdram), // input rd_clk
   .din(din), // input [15 : 0] din
   .wr_en(wr_req), // input wr_en
   .rd_en(wr_fifo_ren), // input rd_en
   .dout(wr_fifo_dout), // output [15 : 0] dout
   .full(wr_fifo_full), // output full
+  .almost_full(wr_fifo_almost_full),
+  .overflow(wr_fifo_overflow),
   .empty(wr_fifo_empty), // output empty
   .rd_data_count(wr_fifo_rd_count), // output [9 : 0] rd_data_count
   .wr_data_count(wr_fifo_wr_count) // output [9 : 0] wr_data_count
@@ -477,13 +512,14 @@ sdram_wr_fifo sdram_wr_fifo (
 sdram_rd_fifo sdram_rd_fifo (
   .rst(~rst_n), // input rst
   .wr_clk(clk_sdram), // input wr_clk
-  .rd_clk(clk_rw), // input rd_clk
+  .rd_clk(clk_rd), // input rd_clk
   .din(rd_fifo_din), // input [15 : 0] din
   .wr_en(rd_fifo_wen), // input wr_en
   .rd_en(rd_req), // input rd_en
   .dout(dout), // output [15 : 0] dout
   .full(rd_fifo_full), // output full
   .empty(rd_fifo_empty), // output empty
+  .underflow(rd_fifo_underflow),
   .rd_data_count(rd_fifo_rd_count), // output [9 : 0] rd_data_count
   .wr_data_count(rd_fifo_wr_count) // output [9 : 0] wr_data_count
 );

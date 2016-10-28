@@ -1,0 +1,30 @@
+
+NET "clk_50m" LOC = T8 | TNM_NET = sys_clk_pin;
+TIMESPEC TS_sys_clk_pin = PERIOD sys_clk_pin 50000 kHz;
+
+##
+NET sw_rst_i                  LOC = L3 | IOSTANDARD = "LVCMOS33"; ## reset pushbutton
+#NET mode_switch               LOC = C3 | IOSTANDARD = "LVCMOS33"; ## key1
+##
+
+NET vga_hsync                   LOC = M14 | IOSTANDARD = "LVCMOS33";
+NET vga_vsync                   LOC = L13 | IOSTANDARD = "LVCMOS33";
+
+NET vga_red<0>                  LOC = M11 | IOSTANDARD = "LVCMOS33"; # VGAD11
+NET vga_red<1>                  LOC = M12 | IOSTANDARD = "LVCMOS33";
+NET vga_red<2>                  LOC = L12 | IOSTANDARD = "LVCMOS33";
+NET vga_red<3>                  LOC = N14 | IOSTANDARD = "LVCMOS33"; # VGAD14
+NET vga_red<4>                  LOC = M13 | IOSTANDARD = "LVCMOS33";
+
+NET vga_blue<0>                 LOC = P7  | IOSTANDARD = "LVCMOS33"; # VGAD0
+NET vga_blue<1>                 LOC = M7  | IOSTANDARD = "LVCMOS33";
+NET vga_blue<2>                 LOC = P8  | IOSTANDARD = "LVCMOS33";
+NET vga_blue<3>                 LOC = N8  | IOSTANDARD = "LVCMOS33";
+NET vga_blue<4>                 LOC = L7  | IOSTANDARD = "LVCMOS33";
+
+NET vga_green<0>                LOC = M9  | IOSTANDARD = "LVCMOS33"; # VGAD5
+NET vga_green<1>                LOC = N9  | IOSTANDARD = "LVCMOS33";
+NET vga_green<2>                LOC = P9  | IOSTANDARD = "LVCMOS33";
+NET vga_green<3>                LOC = L10 | IOSTANDARD = "LVCMOS33";
+NET vga_green<4>                LOC = M10 | IOSTANDARD = "LVCMOS33";
+NET vga_green<5>                LOC = P11 | IOSTANDARD = "LVCMOS33"; # VGAD10
