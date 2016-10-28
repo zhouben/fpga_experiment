@@ -26,3 +26,4 @@ PCIe transfer experiment on MARS6 FPGA.
     1. sdram\_mcb\_tb.do is the script to test sdram\_mcb mod
     1. improve sdram\_model to meet writing at the last several WORDs every row.
 1. add automatic test script (python version) for sdram\_top and sdram\_mcb modules.
+1. add VGA display module, display RGB and France National Flag
