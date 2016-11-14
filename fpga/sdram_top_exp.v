@@ -227,6 +227,9 @@ always @(posedge clk_100m, negedge rst_n) begin
                     if (sdram_rd_ack) begin
                         if (sys_data_out != sys_data_verify) begin
                             error   <= 1'b1;
+                            $display("[%t] Failed to verify data, read %08X, expect %08X", $realtime, sys_data_out, sys_data_verify);
+                            $display("Test FAILED");
+                            $finish(1);
                         end
                         sys_data_verify <= sys_data_verify + 16'd1;
                     end

@@ -77,6 +77,13 @@ initial begin
 
     #100 rst_n <= 1'b1;
 
-    #400_000 $stop;
+    #400_000
+    if (0 == u0.error) begin
+        $display("[%t] Test PASSED", $realtime);
+        $finish(0);
+    end else begin
+        $display("[%t] Test FAILED", $realtime);
+        $finish(1);
+    end
 end
 endmodule
