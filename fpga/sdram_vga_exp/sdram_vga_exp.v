@@ -31,14 +31,23 @@ wire        clk_50m         ;
 wire        clk_vga         ;
 wire        clk_100m        ;
 wire        clk_100m_ref    ;
+wire        rst_clk_n_o     ;
 wire        rst_n           ;
 wire        sdram_rst_n     ;
+wire        mem_rdy         ;
 wire [15:0] mem_din         ;
 wire        mem_wr_req      ;
 wire        mem_rdy_to_wr   ;
 wire        mem_rdy_to_rd   ;
+wire [15:0] mem_dout        ;
 wire        vga_gen_den     ;
 wire [15:0] vga_gen_dout    ;
+wire [15:0] vga_din         ;
+
+assign rst_n = rst_clk_n_o & mem_rdy;
+assign mem_din = mem_rdy ? vga_gen_dout : 16'bx;
+assign mem_wr_req = mem_rdy ? vga_gen_den : 1'bx;
+assign vga_din = mem_rdy ? mem_dout : 16'd0;
 
 sdram_vga_clk_gen sdram_vga_clk_gen
 (
@@ -48,13 +57,13 @@ sdram_vga_clk_gen sdram_vga_clk_gen
     .clk_vga     (clk_vga        ), // 62.5M
     .clk_100m    (clk_100m       ),
     .clk_100m_ref(clk_100m_ref   ),
-    .rst_n       (rst_n          ),
+    .rst_n       (rst_clk_n_o    ),
     .sdram_rst_n (sdram_rst_n    )
 );
 
 vga_data_gen #(
     .DATA_DEPTH (1024*768)
-)(
+) vga_data_gen(
     .clk     (clk_50m       ),
     .rst_n   (rst_n         ),
     .start_i (frame_sync    ),
@@ -63,15 +72,12 @@ vga_data_gen #(
     .dout    (vga_gen_dout  )
 );
 
-assign mem_din = mem_rdy ? vga_gen_dout : 16'bx;
-assign mem_wr_req = mem_rdy ? vga_gen_den : 1'bx;
-
-mem_arbitor(
+mem_arbitor mem_arbitor(
     .clk_sdram      (clk_100m       ),   // input           100MHz
     .clk_sdram_ref  (clk_100m_ref   ),   // input           100MHz for sdram
     .clk_mem_wr     (clk_50m        ),
     .clk_mem_rd     (clk_vga        ),
-    .rst_n          (rst_n          ),
+    .rst_n          (rst_clk_n_o    ),
     .mem_rdy        (mem_rdy        ),
     .mem_toggle     (frame_sync     ),
     .mem_rdy_to_wr  (mem_rdy_to_wr  ),
@@ -97,7 +103,7 @@ vga_ctrl vga_ctrl(
     .rst_n       (rst_n      ),
     .frame_sync  (frame_sync ),
     .data_req    (mem_rd_req ),
-    .din         (mem_dout   ),
+    .din         (vga_din    ),
     .vga_hsync   (vga_hsync  ),
     .vga_vsync   (vga_vsync  ),
     .vga_red     (vga_red    ),

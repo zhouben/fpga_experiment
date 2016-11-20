@@ -141,7 +141,7 @@ sdram_mcb sdram_mcb
     .mem_rdy        (mem_rdy        ),
     .wr_load        (mem_wr_load    ),   // input           users request a new write operation
     .wr_addr        (mem_wr_addr    ),   // input [23:0]    write base address, {Bank{1:0], Row[12:0], Col[8:0]}
-    .wr_length      (DATA_DEPTH     ),   // input [23:0]    write length, 0's based.
+    .wr_length      (DATA_DEPTH[23:0]     ),   // input [23:0]    write length, 0's based.
     .wr_req         (mem_wr_req     ),   // input           write data input valid
     .din            (mem_din        ),   // input [15:0]    write data input
     .wr_done        (mem_wr_done    ),   // output          reply users currenct write complete.
@@ -149,7 +149,7 @@ sdram_mcb sdram_mcb
     .wr_overrun     (wr_overrun     ),   // output          
     .rd_load        (mem_rd_load    ),   // input           
     .rd_addr        (mem_rd_addr    ),   // input [23:0]    
-    .rd_length      (DATA_DEPTH     ),   // input [23:0]    
+    .rd_length      (DATA_DEPTH[23:0]     ),   // input [23:0]    
     .rd_req         (mem_rd_req     ),   // input           users request data read
     .dout           (mem_dout       ),   // output [15:0]   data output for read
     .rd_done        (mem_rd_done    ),   // output          reply users currenct read complete.
