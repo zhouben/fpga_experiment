@@ -29,7 +29,7 @@ localparam COMPLETE  = 2'd3;
 
 `define WRITE_COMPLETE (pixel_init + DATA_DEPTH == pixel_next)
 
-assign start_pulse = start_d2 ^ start_d3;
+assign start_pulse = start_d2 & ~start_d3;
 assign dout = {6'd0, pixel[9:0]};
 
 always @(posedge clk, negedge rst_n) begin

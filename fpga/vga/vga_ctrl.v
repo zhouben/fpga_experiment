@@ -1,5 +1,9 @@
 `timescale 1ns / 1ps
-module vga_ctrl(
+module vga_ctrl#
+(
+    parameter FRAME_SYNC_CYCLE = 4  // frame_sync is active by this cycle number once new frame arrives.
+)
+(
     input               clk         ,
     input               rst_n       ,
     input [15:0]        din         ,
@@ -36,6 +40,7 @@ parameter v_end         = frame_period - v_front_porch;
 `define X_PULSE_END (x_cnt_next == hsync_pulse)
 `define FRAME_START (y_cnt_next == 10'd0)
 `define Y_PULSE_END (y_cnt_next == vsync_pulse)
+`define FRAME_SYNC_COND ((y_cnt_next == 0) && (x_cnt_next < FRAME_SYNC_CYCLE))
 
 `define Y_ACTIVE  ((y_cnt_next >= v_start) && (y_cnt_next < v_end))
 `define X_ACTIVE  ((x_cnt_next >= h_start) && (x_cnt_next < h_end))
@@ -47,11 +52,15 @@ reg [10:0] x_cnt;
 reg [ 9:0] y_cnt;
 reg [15:0] pixel;
 
-// new frame sync signal
-always @(*) begin
-    if (~rst_n) frame_sync <= 1'b0;
-    else if (`LINE_END && `FRAME_END) frame_sync <= 1'b1;
-    else frame_sync <= 1'b0;
+// new frame sync signal, duratte by FRAME_SYNC_CYCLE
+always @(posedge clk, negedge rst_n) begin
+    if (~rst_n) begin
+        frame_sync <= 1'b0;
+    end else if `FRAME_SYNC_COND begin
+        frame_sync <= 1'b1;
+    end else begin
+        frame_sync <= 1'b0;
+    end
 end
 
 always @(*) begin

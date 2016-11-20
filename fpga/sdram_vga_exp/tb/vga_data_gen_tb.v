@@ -41,8 +41,11 @@ task tsk_basic_two_loops_test;
 
         for(loop = 0; loop < 2; loop = loop + 1) begin
             @(posedge clk);
-            mem_toggle <= ~mem_toggle;
+            mem_toggle = 1'b1;
             fork
+                begin
+                    #64 mem_toggle = 1'b0;
+                end
                 begin
                     repeat (8) @(posedge clk);
                     mem_wr_rdy = 1'b1;
@@ -76,42 +79,6 @@ task tsk_basic_two_loops_test;
             mem_wr_rdy = 1'b0;
         end
 
-
-/*
-        @(posedge clk);
-        mem_toggle <= ~mem_toggle;
-        fork
-            begin
-                repeat (5) @(posedge clk);
-                mem_wr_rdy <= 1'b1;
-                //repeat (5) @(posedge clk);
-                //mem_wr_rdy <= 1'b0;
-                //repeat (5) @(posedge clk);
-                //mem_wr_rdy <= 1'b1;
-            end
-            begin
-                while (cnt < (VGA_DATA_DEPTH + 10)) begin
-                    @(posedge clk);
-                    if (cnt >= VGA_DATA_DEPTH) begin
-                        if (mem_wr_req) begin
-                            $display("[%t] should NOT generate extra VGA data. Test FAILED", $realtime);
-                            $finish(1);
-                        end
-                        cnt = cnt + 1;
-                    end else if (mem_wr_req) begin
-                        tmp = (cnt + init_value);
-                        if (mem_din[9:0] != tmp[9:0]) begin
-                            $display("[%t] unexpected VGA data %08X, expected %08X. Test FAILED", $realtime, mem_din, cnt);
-                            $finish(1);
-                        end
-                        cnt = cnt + 1;
-                    end
-                end
-                cnt = 0;
-                init_value = init_value + 1;
-            end
-        join
-        */
     end
 endtask
 

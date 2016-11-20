@@ -2,7 +2,7 @@
 
 module sdram_vga_exp(
     input           clk_50m_i   , // 100MHz
-    input           rst_n_i     ,
+    input           sw_rst_n    ,
 
     // sdram interface
 	output			S_CLK   ,   //sdram clock
@@ -26,10 +26,24 @@ module sdram_vga_exp(
     output          led_0
 );
 
+wire        frame_sync      ;
+wire        clk_50m         ;
+wire        clk_vga         ;
+wire        clk_100m        ;
+wire        clk_100m_ref    ;
+wire        rst_n           ;
+wire        sdram_rst_n     ;
+wire [15:0] mem_din         ;
+wire        mem_wr_req      ;
+wire        mem_rdy_to_wr   ;
+wire        mem_rdy_to_rd   ;
+wire        vga_gen_den     ;
+wire [15:0] vga_gen_dout    ;
+
 sdram_vga_clk_gen sdram_vga_clk_gen
 (
     .clk_50m_i   (clk_50m_i      ),
-    .rst_n_i     (rst_n_i        ),
+    .rst_n_i     (sw_rst_n       ),
     .clk_50m     (clk_50m        ),
     .clk_vga     (clk_vga        ), // 62.5M
     .clk_100m    (clk_100m       ),
@@ -43,11 +57,14 @@ vga_data_gen #(
 )(
     .clk     (clk_50m       ),
     .rst_n   (rst_n         ),
-    .start_i (mem_toggle    ),
-    .wr_en   (mem_wr_rdy    ),
-    .data_en (mem_wr_req    ),
-    .dout    (mem_din       )
+    .start_i (frame_sync    ),
+    .wr_en   (mem_rdy_to_wr ),
+    .data_en (vga_gen_den   ),
+    .dout    (vga_gen_dout  )
 );
+
+assign mem_din = mem_rdy ? vga_gen_dout : 16'bx;
+assign mem_wr_req = mem_rdy ? vga_gen_den : 1'bx;
 
 mem_arbitor(
     .clk_sdram      (clk_100m       ),   // input           100MHz
@@ -56,11 +73,11 @@ mem_arbitor(
     .clk_mem_rd     (clk_vga        ),
     .rst_n          (rst_n          ),
     .mem_rdy        (mem_rdy        ),
-    .mem_toggle     (mem_toggle     ),
-    .mem_wr_rdy     (mem_wr_rdy     ),
+    .mem_toggle     (frame_sync     ),
+    .mem_rdy_to_wr  (mem_rdy_to_wr  ),
     .mem_wr_req     (mem_wr_req     ),
     .mem_din        (mem_din        ),
-    .mem_rd_rdy     (mem_rd_rdy     ),
+    .mem_rdy_to_rd  (mem_rdy_to_rd  ),
     .mem_rd_req     (mem_rd_req     ),
     .mem_dout       (mem_dout       ),
     .S_CLK          (S_CLK          ),        //sdram clock
@@ -78,7 +95,7 @@ mem_arbitor(
 vga_ctrl vga_ctrl(
     .clk         (clk_vga    ),
     .rst_n       (rst_n      ),
-    .frame_sync  (mem_toggle ),
+    .frame_sync  (frame_sync ),
     .data_req    (mem_rd_req ),
     .din         (mem_dout   ),
     .vga_hsync   (vga_hsync  ),

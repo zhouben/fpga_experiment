@@ -27,6 +27,7 @@ module sdram_mcb(
     input           rst_n           ,
 
     // users interface
+    output          mem_rdy         ,
     input           wr_load         ,   // users request a new write operation
     input [23:0]    wr_addr         ,   // write base address, {Bank{1:0], Row[12:0], Col[8:0]}
     input [23:0]    wr_length       ,   // write length, 0's based.
@@ -133,7 +134,7 @@ wire [9:0]  rd_fifo_wr_count;
 wire [9:0]  rd_fifo_rd_count;
 
 assign S_CLK = clk_sdram_ref;
-
+assign mem_rdy = sdram_init_done;
 /****************************************************************************\
 *                                                                            *
 *                       Write Part (WrFIFO and Write Logic)                  *
@@ -430,34 +431,34 @@ end
 sdram_top sdram_top
 (
 	//global clock
-	.clk				(clk_sdram      ),			//sdram reference clock
-	.rst_n				(rst_n          ),			//global reset
+	.clk				(clk_sdram      ),  //sdram reference clock
+	.rst_n				(rst_n          ),  //global reset
 
 	//internal interface
 	.sdram_wr_req		(sdram_wr_req   ), 	//sdram write request
 	.sdram_rd_req		(sdram_rd_req   ), 	//sdram write ack
 	.sdram_wr_ack		(wr_fifo_ren    ), 	//sdram read request
-	.sdram_rd_ack		(rd_fifo_wen    ),		//sdram read ack
+	.sdram_rd_ack		(rd_fifo_wen    ),	//sdram read ack
 	.sys_wraddr			(wr_addr_r      ), 	//sdram write address
 	.sys_rdaddr			(rd_addr_r      ), 	//sdram read address
-	.sys_data_in		(wr_fifo_dout   ),    	//fifo 2 sdram data input
-	.sys_data_out		(rd_fifo_din    ),   	//sdram 2 fifo data input
+	.sys_data_in		(wr_fifo_dout   ),  //fifo 2 sdram data input
+	.sys_data_out		(rd_fifo_din    ),  //sdram 2 fifo data input
 	.sdram_init_done	(sdram_init_done),	//sdram init done
 
 	//burst length
-	.sdwr_byte			(sdwr_byte      ),		//sdram write burst length
-	.sdrd_byte			(sdrd_byte      ),		//sdram read burst length
+	.sdwr_byte			(sdwr_byte      ),	//sdram write burst length
+	.sdrd_byte			(sdrd_byte      ),	//sdram read burst length
 
 	//sdram interface
 //	.sdram_clk			(sdram_clk),		//sdram clock
-	.sdram_cke			(S_CKE          ),		//sdram clock enable
-	.sdram_cs_n			(S_NCS          ),		//sdram chip select
-	.sdram_we_n			(S_NWE          ),		//sdram write enable
-	.sdram_ras_n		(S_NRAS         ),		//sdram column address strobe
-	.sdram_cas_n		(S_NCAS         ),		//sdram row address strobe
-	.sdram_ba			(S_BA           ),			//sdram data enable (H:8)
-	.sdram_addr			(S_A            ),		//sdram data enable (L:8)
-	.sdram_data			(S_DB           )		//sdram bank address
+	.sdram_cke			(S_CKE          ),	//sdram clock enable
+	.sdram_cs_n			(S_NCS          ),	//sdram chip select
+	.sdram_we_n			(S_NWE          ),	//sdram write enable
+	.sdram_ras_n		(S_NRAS         ),	//sdram column address strobe
+	.sdram_cas_n		(S_NCAS         ),	//sdram row address strobe
+	.sdram_ba			(S_BA           ),	//sdram data enable (H:8)
+	.sdram_addr			(S_A            ),	//sdram data enable (L:8)
+	.sdram_data			(S_DB           )	//sdram bank address
 //	.sdram_udqm			(sdram_udqm),		//sdram address
 //	.sdram_ldqm			(sdram_ldqm)		//sdram data
 );

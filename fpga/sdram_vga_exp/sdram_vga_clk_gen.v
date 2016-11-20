@@ -19,6 +19,7 @@ reg         powerup_pll_locked;     // pll locked indicator for SDRAM clock
 wire        clk_50m_bufg_i;
 wire        clk_vga_bufg_i;
 wire        clk_100m_bufg_i;
+wire        clk_100m_bufg_o;
 reg [7:0]   rst_n_d;
 
 IBUFG ibufg_u0(
@@ -26,29 +27,48 @@ IBUFG ibufg_u0(
     .I (clk_50m_i)
 );
 
-BUFGCE bufg_clk1(
+BUFG bufg_clk_50m(
     .O  (clk_50m),
-    .I  (clk_50m_bufg_i),
-    .CE (LOCKED)
+    .I  (clk_50m_ibufg_o)
 );
 
-BUFGCE bufg_clk1(
+BUFGCE bufg_clk_vga(
     .O  (clk_vga),
     .I  (clk_vga_bufg_i),
     .CE (LOCKED)
 );
 
-BUFGCE bufgce_100m(
+BUFGCE bufgce_clk_100m(
     .O  (clk_100m),
     .I  (clk_100m_bufg_i),
     .CE (LOCKED)
 );
 
 BUFGCE bufgce_100m_ref(
-    .O  (clk_100m_ref),
+    .O  (clk_100m_bufg_o),
     .I  (clk_100m_bufg_i),
     .CE (LOCKED)
 );
+
+`ifdef MODELSIM_DBG
+assign clk_100m_ref = clk_100m_bufg_o;
+`else
+ODDR2 #(
+    .DDR_ALIGNMENT("NONE"), // Sets output alignment to "NONE", "C0" or "C1"
+    .INIT(1'b0),    // Sets initial state of the Q output to 1'b0 or 1'b1
+    .SRTYPE("SYNC") // Specifies "SYNC" or "ASYNC" set/reset
+    ) U_ODDR2_100MHZ
+(
+      .Q(clk_100m_ref),   // 1-bit DDR output data
+      .C0(clk_100m_bufg_o),   // 1-bit clock input
+      .C1(~clk_100m_bufg_o),   // 1-bit clock input
+      .CE(1'b1), // 1-bit clock enable input
+      .D0(1'b1), // 1-bit data input (associated with C0)
+      .D1(1'b0), // 1-bit data input (associated with C1)
+      .R(1'b0),   // 1-bit reset input
+      .S(1'b0)    // 1-bit set input
+);
+`endif
 
 /*
 |<- rst_n_i assert ->|
@@ -75,17 +95,11 @@ always @(posedge clk_100m, negedge rst_n_i) begin
     else                rst_n_d <= 7'b0;
 end
 
-  sdram_vga_pll sdram_vga_pll
-   (// Clock in ports
-    .CLK_IN1(clk_50m_ibufg_o),      // IN
-    .CLKFB_IN(CLKFB),     // IN
-    // Clock out ports
-    //.CLK_OUT1(clk_bufg_i),     // OUT
-    .CLK_OUT1(clk_50m_bufg_i),     // OUT
-    .CLK_OUT2(clk_vga_bufg_i),
-    .CLK_OUT3(clk_100m_bufg_i),     // OUT
-    .CLKFB_OUT(CLKFB),    // OUT
-    // Status and control signals
-    .RESET(~rst_n_i),// IN
-    .LOCKED(LOCKED));      // OUT
+sdram_vga_pll sdram_vga_pll (
+    .CLK_IN1(clk_50m_ibufg_o),    // IN
+    .CLK_OUT1(clk_vga_bufg_i),    // OUT
+    .CLK_OUT2(clk_100m_bufg_i),   // OUT
+    .RESET(~rst_n_i),             // IN
+    .LOCKED(LOCKED));             // OUT
+
 endmodule
