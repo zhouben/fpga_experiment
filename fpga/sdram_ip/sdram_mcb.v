@@ -20,41 +20,43 @@
 
 `timescale 1ns/1ps
 module sdram_mcb(
-    input           clk_sdram   , // 100MHz
-    input           clk_rw      ,
-    input           rst_n       ,
+    input           clk_sdram       , // 100MHz
+    input           clk_sdram_ref   ,
+    input           clk_wr          ,
+    input           clk_rd          ,
+    input           rst_n           ,
 
     // users interface
-    input           wr_load     ,   // users request a new write operation
-    input [23:0]    wr_addr     ,   // write base address, {Bank{1:0], Row[12:0], Col[8:0]}
-    input [23:0]    wr_length   ,   // write length, 0's based.
-    input           wr_req      ,   // write data input valid
-    input [15:0]    din         ,   // write data input
-    output          wr_done     ,   // reply users currenct write complete.
-    output          wr_rdy      ,   // write fifo is valid
-    output          wr_overrun  ,
+    input           wr_load         ,   // users request a new write operation
+    input [23:0]    wr_addr         ,   // write base address, {Bank{1:0], Row[12:0], Col[8:0]}
+    input [23:0]    wr_length       ,   // write length, 0's based.
+    input           wr_req          ,   // write data input valid
+    input [15:0]    din             ,   // write data input
+    output          wr_done         ,   // reply users currenct write complete.
+    output          wr_rdy          ,   // write fifo is valid
+    output          wr_overrun      ,
 
-    input           rd_load     ,
-    input [23:0]    rd_addr     ,
-    input [23:0]    rd_length   ,
-    input           rd_req      ,   // users request data read
-    output [15:0]   dout        ,   // data output for read
-    output          rd_done     ,   // replay users currenct write complete.
-    output [9:0]    rd_fifo_cnt ,   // how many data units in rd fifo
-    output          rd_fifo_empty,
-    output          rd_underrun ,
+    input           rd_load         ,
+    input [23:0]    rd_addr         ,
+    input [23:0]    rd_length       ,
+    input           rd_req          ,   // users request data read
+    output [15:0]   dout            ,   // data output for read
+    output          rd_done         ,   // replay users currenct write complete.
+    output [9:0]    rd_fifo_cnt     ,   // how many data units in rd fifo
+    output          rd_fifo_empty   ,
+    output          rd_underrun     ,
 
     // sdram interface
-	output			S_CLK   ,   //sdram clock
-	output			S_CKE   ,   //sdram clock enable
-	output			S_NCS   ,   //sdram chip select
-	output			S_NWE   ,   //sdram write enable
-	output			S_NCAS  ,   //sdram column address strobe
-	output			S_NRAS  ,   //sdram row address strobe
-	output [1:0] 	S_DQM   ,   //sdram data enable
-	output [1:0]	S_BA    ,   //sdram bank address
-	output [12:0]	S_A     ,   //sdram address
-	inout  [15:0]	S_DB        //sdram data
+	output			S_CLK           ,   //sdram clock
+	output			S_CKE           ,   //sdram clock enable
+	output			S_NCS           ,   //sdram chip select
+	output			S_NWE           ,   //sdram write enable
+	output			S_NCAS          ,   //sdram column address strobe
+	output			S_NRAS          ,   //sdram row address strobe
+	output [1:0] 	S_DQM           ,   //sdram data enable
+	output [1:0]	S_BA            ,   //sdram bank address
+	output [12:0]	S_A             ,   //sdram address
+	inout  [15:0]	S_DB                //sdram data
 
 );
 
@@ -130,7 +132,7 @@ wire [15:0] rd_fifo_din;
 wire [9:0]  rd_fifo_wr_count;
 wire [9:0]  rd_fifo_rd_count;
 
-assign S_CLK = clk_sdram;
+assign S_CLK = clk_sdram_ref;
 
 /****************************************************************************\
 *                                                                            *
@@ -143,7 +145,7 @@ assign wr_done          = wr_done_d2 & ~wr_done_d3;
 assign stage_wr_bytes   = (10'd512 - {1'b0, wr_addr_r[8:0]}) < wr_length_r ? (10'd512 - {1'b0, wr_addr_r[8:0]}) : wr_length_r;
 assign wr_rdy = (sdram_init_done && ~wr_fifo_full);
 
-always @(posedge clk_rw, negedge rst_n) begin
+always @(posedge clk_wr, negedge rst_n) begin
     if (~rst_n) begin
         wr_done_d1  <= 1'b0;
         wr_done_d2  <= 1'b0;
@@ -461,7 +463,7 @@ sdram_top sdram_top
 );
 sdram_wr_fifo sdram_wr_fifo (
   .rst(~rst_n), // input rst
-  .wr_clk(clk_rw), // input wr_clk
+  .wr_clk(clk_wr), // input wr_clk
   .rd_clk(clk_sdram), // input rd_clk
   .din(din), // input [15 : 0] din
   .wr_en(wr_req), // input wr_en
@@ -477,7 +479,7 @@ sdram_wr_fifo sdram_wr_fifo (
 sdram_rd_fifo sdram_rd_fifo (
   .rst(~rst_n), // input rst
   .wr_clk(clk_sdram), // input wr_clk
-  .rd_clk(clk_rw), // input rd_clk
+  .rd_clk(clk_rd), // input rd_clk
   .din(rd_fifo_din), // input [15 : 0] din
   .wr_en(rd_fifo_wen), // input wr_en
   .rd_en(rd_req), // input rd_en

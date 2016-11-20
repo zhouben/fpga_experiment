@@ -53,7 +53,9 @@ reg [15:0]  host_data_array[HOST_DATA_DEPTH - 1:0];
 sdram_mcb u0
 (
     .clk_sdram      (clk_100m      ),   // input           100MHz
-    .clk_rw         (clk_50m       ),   // input           
+    .clk_sdram_ref  (clk_100m_ref  ),   // input           100MHz
+    .clk_wr         (clk_50m       ),   // input           
+    .clk_rd         (clk_50m       ),   // input           
     .rst_n          (rst_n         ),   // input           
     .wr_load        (wr_load       ),   // input           users request a new write operation
     .wr_addr        (wr_addr       ),   // input [23:0]    write base address, {Bank{1:0], Row[12:0], Col[8:0]}
