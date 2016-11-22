@@ -127,7 +127,6 @@ reg [9:0]   sdrd_byte;
 reg         sdram_rd_req;
 reg         rd_pending; // current rd transaction is still going on.
 wire        rd_fifo_wen;
-wire        rd_fifo_ren;
 wire        rd_fifo_full;
 wire [15:0] rd_fifo_din;
 wire [9:0]  rd_fifo_wr_count;
@@ -289,9 +288,35 @@ always @(*) begin
         IDLE: begin
             state_next <= IDLE;
             case ({rw_toggle, wr_pending, rd_pending})
-                3'b011, 3'b010, 3'b110  : if(/*wr_fifo_wr_count_d2*/ wr_fifo_rd_count >= stage_wr_bytes ) state_next <= PRE_WR;
-                3'b000, 3'b100          : state_next <= IDLE;
-                3'b001, 3'b111, 3'b101  : if(rd_fifo_wr_count + stage_rd_bytes < 1023) state_next <= PRE_RD;
+                3'b000, 3'b100          : begin
+                    state_next <= IDLE;
+                end
+                3'b010, 3'b110: begin
+                    if( wr_fifo_rd_count >= stage_wr_bytes ) begin
+                        /*wr_fifo_wr_count_d2*/
+                        state_next <= PRE_WR;
+                    end
+                end
+                3'b001, 3'b101: begin
+                    if(rd_fifo_wr_count + stage_rd_bytes < 1023) begin
+                        state_next <= PRE_RD;
+                    end
+                end
+                3'b011: begin
+                    if( wr_fifo_rd_count >= stage_wr_bytes ) begin
+                        /*wr_fifo_wr_count_d2*/
+                        state_next <= PRE_WR;
+                    end else if(rd_fifo_wr_count + stage_rd_bytes < 1023) begin
+                        state_next <= PRE_RD;
+                    end
+                end
+                3'b111: begin
+                    if(rd_fifo_wr_count + stage_rd_bytes < 1023) begin
+                        state_next <= PRE_RD;
+                    end else if( wr_fifo_rd_count >= stage_wr_bytes ) begin
+                        state_next <= PRE_WR;
+                    end
+                end
             endcase
         end
         PRE_WR: begin
@@ -305,7 +330,7 @@ always @(*) begin
         WR_STAGE_CPLT: begin
             rw_toggle_next  <= ~rw_toggle;
             if (wr_length_r == 0) begin
-                state_next  <= WR_DONE; 
+                state_next  <= WR_DONE;
                 cnt_next    <= 2'd0;
             end else begin
                 state_next  <= IDLE;
