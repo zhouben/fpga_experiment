@@ -1,6 +1,6 @@
 vlib work
 vmap work work
-vlog -reportprogress 300 -work work \
+vlog -reportprogress 300 +define+MODELSIM_DBG -work work \
          ../../alinx_ipcore/sdram_vga_pll.v \
          ../sdram_vga_clk_gen.v     \
          ../vga_data_gen.v      \

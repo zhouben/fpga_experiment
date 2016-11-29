@@ -25,7 +25,7 @@ module sdram_vga_exp(
 
     output          led_0
 );
-
+localparam DATA_DEPTH = 1024*40;
 wire        frame_sync      ;
 wire        clk_50m         ;
 wire        clk_vga         ;
@@ -62,7 +62,7 @@ sdram_vga_clk_gen sdram_vga_clk_gen
 );
 
 vga_data_gen #(
-    .DATA_DEPTH (1024*768)
+    .DATA_DEPTH (DATA_DEPTH)
 ) vga_data_gen(
     .clk     (clk_50m       ),
     .rst_n   (rst_n         ),
@@ -72,7 +72,9 @@ vga_data_gen #(
     .dout    (vga_gen_dout  )
 );
 
-mem_arbitor mem_arbitor(
+mem_arbitor #(
+    .WR_DATA_DEPTH (DATA_DEPTH)
+) mem_arbitor(
     .clk_sdram      (clk_100m       ),   // input           100MHz
     .clk_sdram_ref  (clk_100m_ref   ),   // input           100MHz for sdram
     .clk_mem_wr     (clk_50m        ),

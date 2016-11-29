@@ -67,6 +67,7 @@ sdram_rd_fifo your_instance_name (
   .dout(dout), // output [15 : 0] dout
   .full(full), // output full
   .empty(empty), // output empty
+  .underflow(underflow), // output underflow
   .rd_data_count(rd_data_count), // output [9 : 0] rd_data_count
   .wr_data_count(wr_data_count) // output [9 : 0] wr_data_count
 );

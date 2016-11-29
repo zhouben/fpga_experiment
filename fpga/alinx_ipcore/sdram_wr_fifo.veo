@@ -66,6 +66,8 @@ sdram_wr_fifo your_instance_name (
   .rd_en(rd_en), // input rd_en
   .dout(dout), // output [15 : 0] dout
   .full(full), // output full
+  .almost_full(almost_full), // output almost_full
+  .overflow(overflow), // output overflow
   .empty(empty), // output empty
   .rd_data_count(rd_data_count), // output [9 : 0] rd_data_count
   .wr_data_count(wr_data_count) // output [9 : 0] wr_data_count

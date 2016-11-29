@@ -46,6 +46,7 @@ module sdram_rd_fifo(
   dout,
   full,
   empty,
+  underflow,
   rd_data_count,
   wr_data_count
 );
@@ -59,6 +60,7 @@ input rd_en;
 output [15 : 0] dout;
 output full;
 output empty;
+output underflow;
 output [9 : 0] rd_data_count;
 output [9 : 0] wr_data_count;
 
@@ -152,7 +154,7 @@ output [9 : 0] wr_data_count;
     .C_HAS_RST(1),
     .C_HAS_SLAVE_CE(0),
     .C_HAS_SRST(0),
-    .C_HAS_UNDERFLOW(0),
+    .C_HAS_UNDERFLOW(1),
     .C_HAS_VALID(0),
     .C_HAS_WR_ACK(0),
     .C_HAS_WR_DATA_COUNT(1),
@@ -265,6 +267,7 @@ output [9 : 0] wr_data_count;
     .DOUT(dout),
     .FULL(full),
     .EMPTY(empty),
+    .UNDERFLOW(underflow),
     .RD_DATA_COUNT(rd_data_count),
     .WR_DATA_COUNT(wr_data_count),
     .BACKUP(),
@@ -287,7 +290,6 @@ output [9 : 0] wr_data_count;
     .OVERFLOW(),
     .ALMOST_EMPTY(),
     .VALID(),
-    .UNDERFLOW(),
     .DATA_COUNT(),
     .PROG_FULL(),
     .PROG_EMPTY(),

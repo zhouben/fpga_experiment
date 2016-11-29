@@ -95,6 +95,8 @@ reg         sdram_wr_req;
 wire        wr_fifo_ren;
 wire[15:0]  wr_fifo_dout;
 wire        wr_fifo_full;
+wire        wr_fifo_almost_full;
+wire        wr_fifo_overflow;
 reg         wr_pending; // current wr transaction is still going on.
 wire        wr_fifo_empty;
 wire [9:0]  wr_fifo_rd_count;
@@ -143,7 +145,7 @@ assign wr_load_pulse    = wr_load_d2 & ~wr_load_d3;
 assign wr_done_internal = (state == WR_DONE) ? 1'b1 : 1'b0;
 assign wr_done          = wr_done_d2 & ~wr_done_d3;
 assign stage_wr_bytes   = (10'd512 - {1'b0, wr_addr_r[8:0]}) < wr_length_r ? (10'd512 - {1'b0, wr_addr_r[8:0]}) : wr_length_r;
-assign wr_rdy = (sdram_init_done && ~wr_fifo_full);
+assign wr_rdy = (sdram_init_done && ~wr_fifo_almost_full);
 
 always @(posedge clk_wr, negedge rst_n) begin
     if (~rst_n) begin
@@ -496,6 +498,8 @@ sdram_wr_fifo sdram_wr_fifo (
   .rd_en(wr_fifo_ren), // input rd_en
   .dout(wr_fifo_dout), // output [15 : 0] dout
   .full(wr_fifo_full), // output full
+  .almost_full(wr_fifo_almost_full),
+  .overflow(wr_fifo_overflow),
   .empty(wr_fifo_empty), // output empty
   .rd_data_count(wr_fifo_rd_count), // output [9 : 0] rd_data_count
   .wr_data_count(wr_fifo_wr_count) // output [9 : 0] wr_data_count
@@ -512,6 +516,7 @@ sdram_rd_fifo sdram_rd_fifo (
   .dout(dout), // output [15 : 0] dout
   .full(rd_fifo_full), // output full
   .empty(rd_fifo_empty), // output empty
+  .underflow(rd_fifo_underflow),
   .rd_data_count(rd_fifo_rd_count), // output [9 : 0] rd_data_count
   .wr_data_count(rd_fifo_wr_count) // output [9 : 0] wr_data_count
 );

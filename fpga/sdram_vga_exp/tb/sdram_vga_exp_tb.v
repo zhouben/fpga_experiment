@@ -45,7 +45,9 @@ sdram_vga_exp u0(
     .led_0          (           )
 );
 
-sdram_model u1
+sdram_model #(
+    .MEMORY_DEPTH (2*1024*1024)
+) u1
 (
     .sdram_clk          (S_CLK      ),
     .sdram_cke          (S_CKE      ),
@@ -59,7 +61,7 @@ sdram_model u1
     .sdram_addr         (S_A        ),
     .sdram_data         (S_DB       )
 );
-
+integer ret;
 // Clock generation
 always #(CLOCKPERIOD / 2) clk <= ~clk;
 initial begin
@@ -71,7 +73,11 @@ initial begin
     @(posedge clk)
     @(posedge clk)
 
-    #1_000_000 $display("[%t] TEST PASSED", $realtime);
+    //wait (u0.mem_rd_req == 1);
+    $display("[%t] VGA begins to read data", $realtime);
+
+    #2_000_000 $display("[%t] TEST PASSED", $realtime);
+    //ret = u1.dump_memory("memory.log");
     $stop;
 end
 endmodule
