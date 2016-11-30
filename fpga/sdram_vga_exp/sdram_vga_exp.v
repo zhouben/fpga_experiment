@@ -1,6 +1,9 @@
 `timescale 1ns / 1ps
 
-module sdram_vga_exp(
+module sdram_vga_exp #(
+    parameter DISPLAY_RESOLUTION = 1024*768,
+    parameter DATA_DEPTH = 1024*40
+)(
     input           clk_50m_i   , // 100MHz
     input           sw_rst_n    ,
 
@@ -25,7 +28,6 @@ module sdram_vga_exp(
 
     output          led_0
 );
-localparam DATA_DEPTH = 1024*40;
 wire        frame_sync      ;
 wire        clk_50m         ;
 wire        clk_vga         ;
@@ -100,7 +102,9 @@ mem_arbitor #(
     .S_DB           (S_DB           )         //sdram data
 );
 
-vga_ctrl vga_ctrl(
+vga_ctrl #(
+    .DISPLAY_RESOLUTION (DISPLAY_RESOLUTION)
+) vga_ctrl(
     .clk         (clk_vga    ),
     .rst_n       (rst_n      ),
     .frame_sync  (frame_sync ),

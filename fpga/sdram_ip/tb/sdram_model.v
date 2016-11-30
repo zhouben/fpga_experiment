@@ -62,7 +62,7 @@ integer _i;
 
 initial begin
     for (_i = 0; _i < MEMORY_DEPTH; _i = _i + 1) begin
-        memory[_i] = _i;
+        memory[_i] = 0;
     end
 end
 

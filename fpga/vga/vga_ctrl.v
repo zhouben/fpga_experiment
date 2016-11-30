@@ -1,6 +1,7 @@
 `timescale 1ns / 1ps
 module vga_ctrl#
 (
+    parameter DISPLAY_RESOLUTION = 1024*768,
     parameter FRAME_SYNC_CYCLE = 4  // frame_sync is active by this cycle number once new frame arrives.
 )
 (
@@ -43,7 +44,7 @@ parameter v_end         = frame_period - v_front_porch;
 `define FRAME_SYNC_COND ((y_cnt_next == 0) && (x_cnt_next < FRAME_SYNC_CYCLE))
 
 `define Y_ACTIVE  ((y_cnt_next >= v_start) && (y_cnt_next < v_end))
-`define X_ACTIVE  ((x_cnt_next >= h_start) && (x_cnt_next < h_end))
+`define X_ACTIVE  ((x_cnt >= h_start) && (x_cnt < h_end))
 `define X_ACTIVE_PRE  ((x_cnt_next + 1 >= h_start) && (x_cnt_next + 1 < h_end))
 
 reg [10:0] x_cnt_next;
