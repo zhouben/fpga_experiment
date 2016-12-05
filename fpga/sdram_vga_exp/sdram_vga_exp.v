@@ -50,6 +50,7 @@ assign rst_n = rst_clk_n_o & mem_rdy;
 assign mem_din = mem_rdy ? vga_gen_dout : 16'bx;
 assign mem_wr_req = mem_rdy ? vga_gen_den : 1'bx;
 assign vga_din = mem_rdy ? mem_dout : 16'd0;
+assign led_0 = 1'b0;
 
 sdram_vga_clk_gen sdram_vga_clk_gen
 (

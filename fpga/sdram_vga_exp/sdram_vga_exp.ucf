@@ -1,4 +1,4 @@
-NET "clk_50m" LOC = T8 | TNM_NET = sys_clk_pin;
+NET "clk_50m_i" LOC = T8 | TNM_NET = sys_clk_pin;
 TIMESPEC TS_sys_clk_pin = PERIOD sys_clk_pin 50000 kHz;
 
 NET sw_rst_n                LOC = L3  | IOSTANDARD = "LVCMOS33"; ## reset pushbutton

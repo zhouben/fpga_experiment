@@ -306,6 +306,8 @@ task tsk_mixed_write_read_test;
             $display("[%t] No.%2d Write %6X  Read %6X", $realtime, n_, wr_addr, rd_addr);
             for(i_ = 0; i_ < data_depth; i_ = i_ + 1)
                 host_data_array[wr_addr + i_] = $random;
+            $display("[%t] No.%2d Write %6X  Read %6X complete", $realtime, n_, wr_addr, rd_addr);
+
             fork
                 tsk_write(wr_addr, data_depth);
                 tsk_read(rd_addr, data_depth);

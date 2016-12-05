@@ -134,8 +134,10 @@ wire [15:0] rd_fifo_din;
 wire [9:0]  rd_fifo_wr_count;
 wire [9:0]  rd_fifo_rd_count;
 
-assign S_CLK = clk_sdram_ref;
+assign S_CLK   = clk_sdram_ref;
+assign S_DQM   = 2'b0;  //sdram data enable
 assign mem_rdy = sdram_init_done;
+
 /****************************************************************************\
 *                                                                            *
 *                       Write Part (WrFIFO and Write Logic)                  *
@@ -286,6 +288,7 @@ end
 always @(*) begin
     rw_toggle_next  <= rw_toggle;
     cnt_next        <= cnt;
+    state_next      <= state;
     case (state)
         IDLE: begin
             state_next <= IDLE;
