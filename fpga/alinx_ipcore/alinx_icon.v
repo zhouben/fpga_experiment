@@ -8,7 +8,7 @@
 // \   \   \/     Version    : 14.7
 //  \   \         Application: Xilinx CORE Generator
 //  /   /         Filename   : alinx_icon.v
-// /___/   /\     Timestamp  : Sun Oct 23 18:00:32 中国标准时间 2016
+// /___/   /\     Timestamp  : Sun Dec 25 14:09:23 中国标准时间 2016
 // \   \  /  \
 //  \___\/\___\
 //

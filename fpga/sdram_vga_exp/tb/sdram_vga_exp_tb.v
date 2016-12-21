@@ -4,7 +4,7 @@ module sdram_vga_exp_tb();
 
 parameter CLOCKPERIOD = 20;
 localparam WIDTH = 1024;
-localparam DATA_DEPTH = WIDTH*30;
+localparam DATA_DEPTH = WIDTH * 240;
 localparam MEMORY_UNIT_FOR_DISP = WIDTH*1024;
 localparam MEMORY_UNIT_NUM = 2;
 
@@ -75,19 +75,23 @@ task tsk_check_write_result;
     integer _i;
     integer base_addr;
     integer addr;
+    integer loop;
     begin
-        wait (u0.vga_ctrl.data_req == 1'b1);
-        base_addr = (frame_cnt[0] == 1'b0 ? 0 : 1 ) * MEMORY_UNIT_FOR_DISP;
-        $display("[%t] VGA begins to display data. base addr %08X", $realtime, base_addr);
-
-        for (_i = 0; _i < DATA_DEPTH; _i = _i + 1) begin
-            addr = base_addr + _i;
-            if (u1.memory[addr] !== (_i % WIDTH)) begin
-               $display("[%t] frame %d addr %8X value %8d != %8d", $realtime, frame_cnt, addr, u1.memory[addr], _i); 
-               $finish(1);
-           end
+        for(loop = 0; loop < 3; loop = loop + 1) begin
+            wait (u0.mem_arbitor.mem_wr_load);
+            base_addr = u0.mem_arbitor.mem_wr_addr;
+            $display("[%t] Loop %d VGA data will be written at base addr %08X", $realtime, loop, base_addr);
+            wait (u0.mem_arbitor.mem_wr_done == 1'b1);
+            $display("[%t] Loop %d VGA data has be written completely", $realtime, loop);
+            for (_i = 0; _i < DATA_DEPTH; _i = _i + 1) begin
+                addr = base_addr + _i;
+                if (u1.memory[addr] !== ((_i + loop) % WIDTH)) begin
+                    $display("[%t] frame %d addr %8X value %8d != %8d", $realtime, frame_cnt, addr, u1.memory[addr], _i + loop); 
+                    $finish(1);
+                end
+            end
+            $display("[%t] Written VGA data check passed", $realtime);
         end
-        $display("[%t] Written VGA data check passed", $realtime);
     end
 endtask
 // Clock generation
@@ -99,6 +103,10 @@ initial begin
     rst_n       = 1'b0;
     clk         = 1'b0;
     frame_cnt   = 0;
+    #100 rst_n  = 1'b1;
+
+    wait (u0.mem_arbitor.vga_data_lock);
+    #10000 rst_n = 1'b0;
     #100 rst_n  = 1'b1;
 
     tsk_check_write_result();

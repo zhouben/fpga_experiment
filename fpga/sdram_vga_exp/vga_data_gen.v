@@ -16,8 +16,8 @@ reg     start_d2;
 reg     start_d3;
 wire    start_pulse;
 
-reg [19:0]  pixel;
 reg [ 9:0]  pixel_init;
+reg [19:0]  pixel;
 reg [19:0]  pixel_next;
 reg [1:0]   state;
 reg [1:0]   state_next;
@@ -56,21 +56,22 @@ end
 
 always @(posedge clk, negedge rst_n) begin
     if (~rst_n) begin
-        pixel       <= 16'd0;
-        pixel_next  <= 16'd0;
-    end else begin
+        pixel       <= 19'd0;
+        pixel_next  <= 19'd0;
         data_en     <= 1'b0;
-        pixel_next  <= pixel_next;
+    end else begin
         pixel       <= pixel;
+        pixel_next  <= pixel_next;
+        data_en     <= 1'b0;
         case (state_next)
             PRE_WRITE: begin
-                pixel_next   <= pixel_init;
+                pixel_next   <= {10'b0, pixel_init};
             end
             WRITING: begin
                 if (wr_en) begin
                     pixel   <= pixel_next;
-                    data_en <= 1'b1;
                     pixel_next <= pixel_next + 16'd1;
+                    data_en <= 1'b1;
                 end
             end
         endcase

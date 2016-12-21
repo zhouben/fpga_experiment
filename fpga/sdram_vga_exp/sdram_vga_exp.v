@@ -2,7 +2,7 @@
 
 module sdram_vga_exp #(
     parameter DISPLAY_RESOLUTION = 1024*768,
-    parameter DATA_DEPTH = 1024*40
+    parameter DATA_DEPTH = 1024*768
 )(
     input           clk_50m_i   , // 100MHz
     input           sw_rst_n    ,
@@ -29,6 +29,7 @@ module sdram_vga_exp #(
     output          led_0
 );
 wire        frame_sync      ;
+wire        vga_new_frame   ;
 wire        clk_50m         ;
 wire        clk_vga         ;
 wire        clk_100m        ;
@@ -45,12 +46,84 @@ wire [15:0] mem_dout        ;
 wire        vga_gen_den     ;
 wire [15:0] vga_gen_dout    ;
 wire [15:0] vga_din         ;
+wire        vga_data_lock   ;
+reg [19:0]  local_rst_n     ;
 
 assign rst_n = rst_clk_n_o & mem_rdy;
 assign mem_din = mem_rdy ? vga_gen_dout : 16'bx;
 assign mem_wr_req = mem_rdy ? vga_gen_den : 1'bx;
 assign vga_din = mem_rdy ? mem_dout : 16'd0;
+
+`ifndef MODELSIM_DBG
+
+wire [35 : 0] CONTROL0;
+wire [35 : 0] CONTROL1;
+wire [7 : 0] ASYNC_IN;
+wire [63 : 0] ASYNC_OUT;
+wire [31:0] ila_trig0;
+wire [31:0] ila_trig1;
+wire [31:0] ila_trig2;
+wire [31:0] ila_trig3;
+wire [31:0] ila_trig4;
+
+wire          dbg_mem_wr_load ;
+wire [23:0]   dbg_wr_load_addr;
+wire          dbg_mem_rd_load ;
+wire [23:0]   dbg_rd_load_addr;
+wire [23:0]   dbg_wr_addr     ;
+wire [23:0]   dbg_rd_addr     ;
+wire          dbg_pingpong    ;
+wire          dbg_write_level ;
+wire          dbg_data_lock   ;
+
+alinx_icon my_icon_inst (
+    .CONTROL0(CONTROL0), // INOUT BUS [35:0]
+    .CONTROL1(CONTROL1) // INOUT BUS [35:0]
+);
+alinx_vio my_vio_inst (
+    .CONTROL(CONTROL0), // INOUT BUS [35:0]
+    .ASYNC_IN(ASYNC_IN),
+    .ASYNC_OUT(ASYNC_OUT) // OUT BUS [63:0]
+);
+alinx_ila my_ila_inst (
+    .CONTROL(CONTROL1), // INOUT BUS [35:0]
+    .CLK(clk_100m), // IN
+    .TRIG0(ila_trig0), // IN BUS [3:0]
+    .TRIG1(ila_trig1),// IN BUS [31:0]
+    .TRIG2(ila_trig2), // IN BUS [31:0]
+    .TRIG3(ila_trig3),// IN BUS [31:0]
+    .TRIG4(ila_trig4) // IN BUS [31:0]
+);
+
+assign ila_trig0 = {
+    4'b0,
+    dbg_pingpong        ,
+    dbg_write_level     ,
+    dbg_data_lock       ,
+    dbg_mem_wr_load     ,
+    dbg_wr_load_addr    
+    };
+
+assign ila_trig1 = {
+    7'b0,
+    dbg_mem_rd_load ,
+    dbg_rd_load_addr
+    };
+
+assign ila_trig2 = {
+    8'b0,
+    dbg_wr_addr
+    };
+
+assign ila_trig3 = {
+    8'b0,
+    dbg_rd_addr
+    };
+
+assign led_0 = ASYNC_OUT[1];
+`else
 assign led_0 = 1'b0;
+`endif
 
 sdram_vga_clk_gen sdram_vga_clk_gen
 (
@@ -64,15 +137,23 @@ sdram_vga_clk_gen sdram_vga_clk_gen
     .sdram_rst_n (sdram_rst_n    )
 );
 
+always @(posedge clk_50m, negedge rst_n) begin
+    if (~rst_n) begin
+        local_rst_n <= 20'b0;
+    end else begin
+        local_rst_n <= {local_rst_n[18:0], rst_n};
+    end
+end
+
 vga_data_gen #(
     .DATA_DEPTH (DATA_DEPTH)
 ) vga_data_gen(
-    .clk     (clk_50m       ),
-    .rst_n   (rst_n         ),
-    .start_i (frame_sync    ),
-    .wr_en   (mem_rdy_to_wr ),
-    .data_en (vga_gen_den   ),
-    .dout    (vga_gen_dout  )
+    .clk     (clk_50m               ),
+    .rst_n   (local_rst_n[9]        ),
+    .start_i (vga_new_frame         ),  // input, indicate vga_data_gen to generate new frame
+    .wr_en   (mem_rdy_to_wr         ),
+    .data_en (vga_gen_den           ),
+    .dout    (vga_gen_dout          )
 );
 
 mem_arbitor #(
@@ -84,13 +165,25 @@ mem_arbitor #(
     .clk_mem_rd     (clk_vga        ),
     .rst_n          (rst_clk_n_o    ),
     .mem_rdy        (mem_rdy        ),
-    .mem_toggle     (frame_sync     ),
+    .vga_data_lock  (vga_data_lock  ),
+    .vga_new_frame  (vga_new_frame  ),  // output, allow external module to generate new frame.
     .mem_rdy_to_wr  (mem_rdy_to_wr  ),
     .mem_wr_req     (mem_wr_req     ),
     .mem_din        (mem_din        ),
     .mem_rdy_to_rd  (mem_rdy_to_rd  ),
     .mem_rd_req     (mem_rd_req     ),
     .mem_dout       (mem_dout       ),
+
+    .dbg_mem_wr_load (dbg_mem_wr_load ),
+    .dbg_wr_load_addr(dbg_wr_load_addr),
+    .dbg_mem_rd_load (dbg_mem_rd_load ),
+    .dbg_rd_load_addr(dbg_rd_load_addr),
+    .dbg_wr_addr     (dbg_wr_addr     ),
+    .dbg_rd_addr     (dbg_rd_addr     ),
+    .dbg_pingpong    (dbg_pingpong    ),
+    .dbg_write_level (dbg_write_level ),
+    .dbg_data_lock   (dbg_data_lock   ),
+
     .S_CLK          (S_CLK          ),        //sdram clock
     .S_CKE          (S_CKE          ),        //sdram clock enable
     .S_NCS          (S_NCS          ),        //sdram chip select
@@ -106,16 +199,17 @@ mem_arbitor #(
 vga_ctrl #(
     .DISPLAY_RESOLUTION (DISPLAY_RESOLUTION)
 ) vga_ctrl(
-    .clk         (clk_vga    ),
-    .rst_n       (rst_n      ),
-    .frame_sync  (frame_sync ),
-    .data_req    (mem_rd_req ),
-    .din         (vga_din    ),
-    .vga_hsync   (vga_hsync  ),
-    .vga_vsync   (vga_vsync  ),
-    .vga_red     (vga_red    ),
-    .vga_green   (vga_green  ),
-    .vga_blue    (vga_blue   )
+    .clk         (clk_vga       ),
+    .rst_n       (local_rst_n[19]),
+    .frame_sync  (frame_sync    ),
+    .data_lock   (vga_data_lock ),
+    .data_req    (mem_rd_req    ),
+    .din         (vga_din       ),
+    .vga_hsync   (vga_hsync     ),
+    .vga_vsync   (vga_vsync     ),
+    .vga_red     (vga_red       ),
+    .vga_green   (vga_green     ),
+    .vga_blue    (vga_blue      )
 );
 
 endmodule

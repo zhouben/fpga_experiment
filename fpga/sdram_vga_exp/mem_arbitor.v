@@ -13,12 +13,24 @@ module mem_arbitor #(
     input           clk_mem_rd      ,
     input           rst_n           ,
     output          mem_rdy         ,
-    input           mem_toggle      ,
+    input           vga_data_lock   ,   // indicate vga is holding data
+    output reg      vga_new_frame   ,   // allow vga data generating module to generate data.
     output          mem_rdy_to_wr   ,   // memory is ready to be written
     input           mem_wr_req      ,   // external modules want to write data
     input [15:0]    mem_din         ,
     output          mem_rdy_to_rd   ,   // memory is ready to be read.
     input           mem_rd_req      ,
+
+    output          dbg_mem_wr_load ,
+    output [23:0]   dbg_wr_load_addr,
+    output          dbg_mem_rd_load ,
+    output [23:0]   dbg_rd_load_addr,
+    output [23:0]   dbg_wr_addr     ,
+    output [23:0]   dbg_rd_addr     ,
+    output          dbg_pingpong    ,
+    output          dbg_write_level ,
+    output          dbg_data_lock   ,
+
     output [15:0]   mem_dout        ,
     output			S_CLK           ,   //sdram clock
     output			S_CKE           ,   //sdram clock enable
@@ -37,12 +49,13 @@ localparam STATE_PRE_TOGGLE = 2'd1;
 localparam STATE_RW         = 2'd2;
 
 wire        clk;
-reg         mem_wr_load;
+wire        local_rst_n;
+wire        mem_wr_load;
 wire [23:0] mem_wr_addr;
 wire        mem_wr_done;
 wire        wr_fifo_rdy;
 wire        wr_overrun ;
-reg         mem_rd_load;
+wire        mem_rd_load;
 wire        mem_rd_done;
 wire [23:0] mem_rd_addr;
 wire [9:0]  rd_fifo_cnt;
@@ -52,64 +65,45 @@ wire        rd_underrun;
 reg         mem_rd_done_d2;
 reg         mem_rd_done_d1;
 
-
-reg [1:0]   state;
-reg [1:0]   state_next;
 reg         mem_toggle_d1;
 reg         mem_toggle_d2;
 reg         mem_toggle_d3;
-wire        kickoff;
+reg         vga_data_lock_d1;
+reg         vga_data_lock_d2;
 
 reg         pingpong_state;
+reg         vga_write_data_level;   // 1: vga_gen_data is writing date, 0: vga_gen_data isn't writing data.
+reg [4:0]   vga_new_frame_count;
 
 assign clk = clk_sdram;
+assign local_rst_n = rst_n & mem_rdy;
+
+assign mem_wr_load = (|vga_new_frame_count[4:1]);
+assign mem_rd_load = (|vga_new_frame_count[4:1]);
 assign mem_wr_addr = (~pingpong_state) ? WR_INIT_ADDR : RD_INIT_ADRR;
 assign mem_rd_addr = ( pingpong_state) ? WR_INIT_ADDR : RD_INIT_ADRR;
 
-assign mem_rdy_to_wr = (state == STATE_RW) && wr_fifo_rdy;
-assign mem_rdy_to_rd = (state == STATE_RW) && ~rd_fifo_empty;
+assign mem_rdy_to_wr = (vga_write_data_level) && wr_fifo_rdy;
+assign mem_rdy_to_rd = (vga_data_lock_d2) && ~rd_fifo_empty;
 
-always @(posedge clk, negedge rst_n) begin
-    if (~rst_n) begin
-        pingpong_state   <= 1'b0;
+assign dbg_mem_wr_load = mem_wr_load;
+assign dbg_wr_load_addr= mem_wr_addr;
+assign dbg_mem_rd_load = mem_rd_load;
+assign dbg_rd_load_addr= mem_rd_addr;
+assign dbg_pingpong    = pingpong_state;
+assign dbg_write_level = vga_write_data_level;
+assign dbg_data_lock   = vga_data_lock;
+
+always @(posedge clk, negedge local_rst_n) begin
+    if (~local_rst_n) begin
+        pingpong_state  <= 1'b0;
     end else begin
-        pingpong_state  <= (state_next == STATE_PRE_TOGGLE) ? ~pingpong_state : pingpong_state;
+        pingpong_state  <= (vga_new_frame_count[0] == 1'b1) ? ~pingpong_state : pingpong_state;
     end
 end
 
-always @(posedge clk, negedge rst_n) begin
-    if (~rst_n) begin
-        state   <= STATE_IDLE;
-    end else begin
-        state   <= state_next;
-    end
-end
-
-always @(*) begin
-    state_next <= state;
-    mem_wr_load <= 1'b0;
-    mem_rd_load <= 1'b0;
-    case (state)
-        STATE_IDLE: begin
-            if (kickoff) begin
-                state_next <= STATE_PRE_TOGGLE;
-            end
-        end
-        STATE_PRE_TOGGLE: begin
-            mem_wr_load <= 1'b1;
-            mem_rd_load <= 1'b1;
-            state_next  <= STATE_RW;
-        end
-        STATE_RW: begin
-            if (mem_rd_done_d2) begin
-                state_next <= STATE_IDLE;
-            end
-        end
-    endcase
-end
-
-always @(posedge clk, negedge rst_n) begin
-    if (~rst_n) begin
+always @(posedge clk, negedge local_rst_n) begin
+    if (~local_rst_n) begin
         mem_rd_done_d1 <= 1'b0;
         mem_rd_done_d2 <= 1'b0;
     end else begin
@@ -119,16 +113,54 @@ always @(posedge clk, negedge rst_n) begin
 end
 
 // toggle signal
-assign kickoff = ~mem_toggle_d3 & mem_toggle_d2;
-always @(posedge clk, negedge rst_n) begin
-    if (~rst_n) begin
-        mem_toggle_d1 <= 1'b0;
-        mem_toggle_d2 <= 1'b0;
-        mem_toggle_d3 <= 1'b0;
+
+always @(posedge clk, negedge local_rst_n) begin
+    if (~local_rst_n) begin
+        vga_data_lock_d1 <= 1'b0;
+        vga_data_lock_d2 <= 1'b0;
     end else begin
-        mem_toggle_d1 <= mem_toggle;
-        mem_toggle_d2 <= mem_toggle_d1;
-        mem_toggle_d3 <= mem_toggle_d2;
+        vga_data_lock_d1 <= vga_data_lock;
+        vga_data_lock_d2 <= vga_data_lock_d1;
+    end
+end
+
+always @(posedge clk, negedge local_rst_n) begin
+    if (~local_rst_n) begin
+        vga_new_frame    <= 1'b0;
+    end else begin
+        if (vga_new_frame) begin
+            vga_new_frame <= (mem_wr_req) ? 1'b0 : 1'b1;
+        end else begin
+            vga_new_frame <= (vga_new_frame_count[0]) ? 1'b1 : 1'b0;
+        end
+    end
+end
+
+always @(posedge clk, negedge local_rst_n) begin
+    if (~local_rst_n) begin
+        vga_write_data_level    <= 1'b0;
+    end else begin
+        if (mem_wr_done) begin
+            vga_write_data_level <= 1'b0;
+        end else if (vga_new_frame_count[1]) begin
+            vga_write_data_level <= 1'b1;
+        end else begin
+            vga_write_data_level <= vga_write_data_level;
+        end
+    end
+end
+
+always @(posedge clk, negedge local_rst_n) begin
+    if (~local_rst_n) begin
+        vga_new_frame_count     <= 5'b0;
+    end else begin
+        if ((|vga_new_frame_count) == 1'b0) begin
+            if (~(vga_write_data_level | vga_data_lock_d2)) begin
+                vga_new_frame_count[0] <= 1'b1;
+            end
+        end else begin
+            vga_new_frame_count <= {vga_new_frame_count[3:0], 1'b0};
+        end
     end
 end
 
@@ -157,6 +189,9 @@ sdram_mcb sdram_mcb
     .rd_fifo_cnt    (rd_fifo_cnt        ),   // output [9:0]    how many data units in rd fifo
     .rd_fifo_empty  (rd_fifo_empty      ),
     .rd_underrun    (rd_underrun        ),   // output          
+
+    .dbg_wr_addr    (dbg_wr_addr        ),
+    .dbg_rd_addr    (dbg_rd_addr        ),
 
     .S_CLK      (S_CLK   ),        //sdram clock
     .S_CKE      (S_CKE   ),        //sdram clock enable

@@ -8,7 +8,7 @@
 // \   \   \/     Version    : 14.7
 //  \   \         Application: Xilinx CORE Generator
 //  /   /         Filename   : alinx_vio.v
-// /___/   /\     Timestamp  : Sat Oct 15 08:12:52 中国标准时间 2016
+// /___/   /\     Timestamp  : Wed Dec 21 22:33:07 中国标准时间 2016
 // \   \  /  \
 //  \___\/\___\
 //
