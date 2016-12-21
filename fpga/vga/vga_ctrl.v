@@ -9,6 +9,7 @@ module vga_ctrl#
     input               rst_n       ,
     input [15:0]        din         ,
     output reg          frame_sync  ,
+    output              data_lock   ,   // 1: this module is reading data for display.
     output reg          data_req    ,
     output reg          vga_hsync   ,
     output reg          vga_vsync   ,
@@ -52,6 +53,8 @@ reg [ 9:0] y_cnt_next;
 reg [10:0] x_cnt;
 reg [ 9:0] y_cnt;
 reg [15:0] pixel;
+
+assign data_lock = ((y_cnt > v_start - 1) && (y_cnt < v_end)) ? 1'b1 : 1'b0;
 
 // new frame sync signal, duratte by FRAME_SYNC_CYCLE
 always @(posedge clk, negedge rst_n) begin

@@ -2,7 +2,7 @@
 
 module sdram_vga_exp #(
     parameter DISPLAY_RESOLUTION = 1024*768,
-    parameter DATA_DEPTH = 1024*40
+    parameter DATA_DEPTH = 1024*240
 )(
     input           clk_50m_i   , // 100MHz
     input           sw_rst_n    ,
@@ -29,6 +29,7 @@ module sdram_vga_exp #(
     output          led_0
 );
 wire        frame_sync      ;
+wire        vga_new_frame   ;
 wire        clk_50m         ;
 wire        clk_vga         ;
 wire        clk_100m        ;
@@ -45,6 +46,8 @@ wire [15:0] mem_dout        ;
 wire        vga_gen_den     ;
 wire [15:0] vga_gen_dout    ;
 wire [15:0] vga_din         ;
+wire        vga_data_lock   ;
+reg [19:0]  local_rst_n     ;
 
 assign rst_n = rst_clk_n_o & mem_rdy;
 assign mem_din = mem_rdy ? vga_gen_dout : 16'bx;
@@ -64,15 +67,23 @@ sdram_vga_clk_gen sdram_vga_clk_gen
     .sdram_rst_n (sdram_rst_n    )
 );
 
+always @(posedge clk_50m, negedge rst_n) begin
+    if (~rst_n) begin
+        local_rst_n <= 20'b0;
+    end else begin
+        local_rst_n <= {local_rst_n[18:0], rst_n};
+    end
+end
+
 vga_data_gen #(
     .DATA_DEPTH (DATA_DEPTH)
 ) vga_data_gen(
-    .clk     (clk_50m       ),
-    .rst_n   (rst_n         ),
-    .start_i (frame_sync    ),
-    .wr_en   (mem_rdy_to_wr ),
-    .data_en (vga_gen_den   ),
-    .dout    (vga_gen_dout  )
+    .clk     (clk_50m               ),
+    .rst_n   (local_rst_n[9]        ),
+    .start_i (vga_new_frame         ),  // input, indicate vga_data_gen to generate new frame
+    .wr_en   (mem_rdy_to_wr         ),
+    .data_en (vga_gen_den           ),
+    .dout    (vga_gen_dout          )
 );
 
 mem_arbitor #(
@@ -84,7 +95,8 @@ mem_arbitor #(
     .clk_mem_rd     (clk_vga        ),
     .rst_n          (rst_clk_n_o    ),
     .mem_rdy        (mem_rdy        ),
-    .mem_toggle     (frame_sync     ),
+    .vga_data_lock  (vga_data_lock  ),
+    .vga_new_frame  (vga_new_frame  ),  // output, allow external module to generate new frame.
     .mem_rdy_to_wr  (mem_rdy_to_wr  ),
     .mem_wr_req     (mem_wr_req     ),
     .mem_din        (mem_din        ),
@@ -106,16 +118,17 @@ mem_arbitor #(
 vga_ctrl #(
     .DISPLAY_RESOLUTION (DISPLAY_RESOLUTION)
 ) vga_ctrl(
-    .clk         (clk_vga    ),
-    .rst_n       (rst_n      ),
-    .frame_sync  (frame_sync ),
-    .data_req    (mem_rd_req ),
-    .din         (vga_din    ),
-    .vga_hsync   (vga_hsync  ),
-    .vga_vsync   (vga_vsync  ),
-    .vga_red     (vga_red    ),
-    .vga_green   (vga_green  ),
-    .vga_blue    (vga_blue   )
+    .clk         (clk_vga       ),
+    .rst_n       (local_rst_n[19]),
+    .frame_sync  (frame_sync    ),
+    .data_lock   (vga_data_lock ),
+    .data_req    (mem_rd_req    ),
+    .din         (vga_din       ),
+    .vga_hsync   (vga_hsync     ),
+    .vga_vsync   (vga_vsync     ),
+    .vga_red     (vga_red       ),
+    .vga_green   (vga_green     ),
+    .vga_blue    (vga_blue      )
 );
 
 endmodule

@@ -307,15 +307,7 @@ always @(*) begin
                         state_next <= PRE_RD;
                     end
                 end
-                3'b011: begin
-                    if( wr_fifo_rd_count >= stage_wr_bytes ) begin
-                        /*wr_fifo_wr_count_d2*/
-                        state_next <= PRE_WR;
-                    end else if(rd_fifo_wr_count + stage_rd_bytes < 1023) begin
-                        state_next <= PRE_RD;
-                    end
-                end
-                3'b111: begin
+                3'b111, 3'b011: begin
                     if(rd_fifo_wr_count + stage_rd_bytes < 1023) begin
                         state_next <= PRE_RD;
                     end else if( wr_fifo_rd_count >= stage_wr_bytes ) begin
@@ -323,6 +315,38 @@ always @(*) begin
                     end
                 end
             endcase
+            
+            //case ({rw_toggle, wr_pending, rd_pending})
+            //    3'b000, 3'b100          : begin
+            //        state_next <= IDLE;
+            //    end
+            //    3'b010, 3'b110: begin
+            //        if( wr_fifo_rd_count >= stage_wr_bytes ) begin
+            //            /*wr_fifo_wr_count_d2*/
+            //            state_next <= PRE_WR;
+            //        end
+            //    end
+            //    3'b001, 3'b101: begin
+            //        if(rd_fifo_wr_count + stage_rd_bytes < 1023) begin
+            //            state_next <= PRE_RD;
+            //        end
+            //    end
+            //    3'b011: begin
+            //        if( wr_fifo_rd_count >= stage_wr_bytes ) begin
+            //            /*wr_fifo_wr_count_d2*/
+            //            state_next <= PRE_WR;
+            //        end else if(rd_fifo_wr_count + stage_rd_bytes < 1023) begin
+            //            state_next <= PRE_RD;
+            //        end
+            //    end
+            //    3'b111: begin
+            //        if(rd_fifo_wr_count + stage_rd_bytes < 1023) begin
+            //            state_next <= PRE_RD;
+            //        end else if( wr_fifo_rd_count >= stage_wr_bytes ) begin
+            //            state_next <= PRE_WR;
+            //        end
+            //    end
+            //endcase
         end
         PRE_WR: begin
             state_next <= WRITING;
