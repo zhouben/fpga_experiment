@@ -57,16 +57,68 @@ assign vga_din = mem_rdy ? mem_dout : 16'd0;
 `ifndef MODELSIM_DBG
 
 wire [35 : 0] CONTROL0;
+wire [35 : 0] CONTROL1;
 wire [7 : 0] ASYNC_IN;
 wire [63 : 0] ASYNC_OUT;
+wire [31:0] ila_trig0;
+wire [31:0] ila_trig1;
+wire [31:0] ila_trig2;
+wire [31:0] ila_trig3;
+wire [31:0] ila_trig4;
+
+wire          dbg_mem_wr_load ;
+wire [23:0]   dbg_wr_load_addr;
+wire          dbg_mem_rd_load ;
+wire [23:0]   dbg_rd_load_addr;
+wire [23:0]   dbg_wr_addr     ;
+wire [23:0]   dbg_rd_addr     ;
+wire          dbg_pingpong    ;
+wire          dbg_write_level ;
+wire          dbg_data_lock   ;
+
 alinx_icon my_icon_inst (
-    .CONTROL0(CONTROL0) // INOUT BUS [35:0]
+    .CONTROL0(CONTROL0), // INOUT BUS [35:0]
+    .CONTROL1(CONTROL1) // INOUT BUS [35:0]
 );
 alinx_vio my_vio_inst (
     .CONTROL(CONTROL0), // INOUT BUS [35:0]
     .ASYNC_IN(ASYNC_IN),
     .ASYNC_OUT(ASYNC_OUT) // OUT BUS [63:0]
 );
+alinx_ila my_ila_inst (
+    .CONTROL(CONTROL1), // INOUT BUS [35:0]
+    .CLK(clk_100m), // IN
+    .TRIG0(ila_trig0), // IN BUS [3:0]
+    .TRIG1(ila_trig1),// IN BUS [31:0]
+    .TRIG2(ila_trig2), // IN BUS [31:0]
+    .TRIG3(ila_trig3),// IN BUS [31:0]
+    .TRIG4(ila_trig4) // IN BUS [31:0]
+);
+
+assign ila_trig0 = {
+    4'b0,
+    dbg_pingpong        ,
+    dbg_write_level     ,
+    dbg_data_lock       ,
+    dbg_mem_wr_load     ,
+    dbg_wr_load_addr    
+    };
+
+assign ila_trig1 = {
+    7'b0,
+    dbg_mem_rd_load ,
+    dbg_rd_load_addr
+    };
+
+assign ila_trig2 = {
+    8'b0,
+    dbg_wr_addr
+    };
+
+assign ila_trig3 = {
+    8'b0,
+    dbg_rd_addr
+    };
 
 assign led_0 = ASYNC_OUT[1];
 `else
@@ -121,6 +173,17 @@ mem_arbitor #(
     .mem_rdy_to_rd  (mem_rdy_to_rd  ),
     .mem_rd_req     (mem_rd_req     ),
     .mem_dout       (mem_dout       ),
+
+    .dbg_mem_wr_load (dbg_mem_wr_load ),
+    .dbg_wr_load_addr(dbg_wr_load_addr),
+    .dbg_mem_rd_load (dbg_mem_rd_load ),
+    .dbg_rd_load_addr(dbg_rd_load_addr),
+    .dbg_wr_addr     (dbg_wr_addr     ),
+    .dbg_rd_addr     (dbg_rd_addr     ),
+    .dbg_pingpong    (dbg_pingpong    ),
+    .dbg_write_level (dbg_write_level ),
+    .dbg_data_lock   (dbg_data_lock   ),
+
     .S_CLK          (S_CLK          ),        //sdram clock
     .S_CKE          (S_CKE          ),        //sdram clock enable
     .S_NCS          (S_NCS          ),        //sdram chip select

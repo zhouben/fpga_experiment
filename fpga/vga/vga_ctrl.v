@@ -54,7 +54,7 @@ reg [10:0] x_cnt;
 reg [ 9:0] y_cnt;
 reg [15:0] pixel;
 
-assign data_lock = ((y_cnt > v_start - 1) && (y_cnt < v_end)) ? 1'b1 : 1'b0;
+assign data_lock = ((y_cnt > v_start - 1) && (y_cnt < v_end + 1)) ? 1'b1 : 1'b0;
 
 // new frame sync signal, duratte by FRAME_SYNC_CYCLE
 always @(posedge clk, negedge rst_n) begin

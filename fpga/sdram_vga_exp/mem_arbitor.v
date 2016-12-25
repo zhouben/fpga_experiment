@@ -27,6 +27,9 @@ module mem_arbitor #(
     output [23:0]   dbg_rd_load_addr,
     output [23:0]   dbg_wr_addr     ,
     output [23:0]   dbg_rd_addr     ,
+    output          dbg_pingpong    ,
+    output          dbg_write_level ,
+    output          dbg_data_lock   ,
 
     output [15:0]   mem_dout        ,
     output			S_CLK           ,   //sdram clock
@@ -86,7 +89,10 @@ assign mem_rdy_to_rd = (vga_data_lock_d2) && ~rd_fifo_empty;
 assign dbg_mem_wr_load = mem_wr_load;
 assign dbg_wr_load_addr= mem_wr_addr;
 assign dbg_mem_rd_load = mem_rd_load;
-assign dbg_rd_load_addr= mem_wr_addr;
+assign dbg_rd_load_addr= mem_rd_addr;
+assign dbg_pingpong    = pingpong_state;
+assign dbg_write_level = vga_write_data_level;
+assign dbg_data_lock   = vga_data_lock;
 
 always @(posedge clk, negedge local_rst_n) begin
     if (~local_rst_n) begin
