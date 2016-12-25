@@ -37,6 +37,9 @@ module sdram_mcb(
     output          wr_rdy          ,   // write fifo is valid
     output          wr_overrun      ,
 
+    output [23:0]   dbg_wr_addr     ,
+    output [23:0]   dbg_rd_addr     ,
+
     input           rd_load         ,
     input [23:0]    rd_addr         ,
     input [23:0]    rd_length       ,
@@ -137,6 +140,14 @@ wire [9:0]  rd_fifo_rd_count;
 assign S_CLK   = clk_sdram_ref;
 assign S_DQM   = 2'b0;  //sdram data enable
 assign mem_rdy = sdram_init_done;
+
+/****************************************************************************\
+*                                                                            *
+*                       Debug module                                         *
+*                                                                            *
+\****************************************************************************/
+assign dbg_wr_addr = wr_addr_r;
+assign dbg_rd_addr = rd_addr_r;
 
 /****************************************************************************\
 *                                                                            *

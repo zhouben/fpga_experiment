@@ -20,6 +20,14 @@ module mem_arbitor #(
     input [15:0]    mem_din         ,
     output          mem_rdy_to_rd   ,   // memory is ready to be read.
     input           mem_rd_req      ,
+
+    output          dbg_mem_wr_load ,
+    output [23:0]   dbg_wr_load_addr,
+    output          dbg_mem_rd_load ,
+    output [23:0]   dbg_rd_load_addr,
+    output [23:0]   dbg_wr_addr     ,
+    output [23:0]   dbg_rd_addr     ,
+
     output [15:0]   mem_dout        ,
     output			S_CLK           ,   //sdram clock
     output			S_CKE           ,   //sdram clock enable
@@ -54,7 +62,6 @@ wire        rd_underrun;
 reg         mem_rd_done_d2;
 reg         mem_rd_done_d1;
 
-
 reg         mem_toggle_d1;
 reg         mem_toggle_d2;
 reg         mem_toggle_d3;
@@ -75,6 +82,11 @@ assign mem_rd_addr = ( pingpong_state) ? WR_INIT_ADDR : RD_INIT_ADRR;
 
 assign mem_rdy_to_wr = (vga_write_data_level) && wr_fifo_rdy;
 assign mem_rdy_to_rd = (vga_data_lock_d2) && ~rd_fifo_empty;
+
+assign dbg_mem_wr_load = mem_wr_load;
+assign dbg_wr_load_addr= mem_wr_addr;
+assign dbg_mem_rd_load = mem_rd_load;
+assign dbg_rd_load_addr= mem_wr_addr;
 
 always @(posedge clk, negedge local_rst_n) begin
     if (~local_rst_n) begin
@@ -171,6 +183,9 @@ sdram_mcb sdram_mcb
     .rd_fifo_cnt    (rd_fifo_cnt        ),   // output [9:0]    how many data units in rd fifo
     .rd_fifo_empty  (rd_fifo_empty      ),
     .rd_underrun    (rd_underrun        ),   // output          
+
+    .dbg_wr_addr    (dbg_wr_addr        ),
+    .dbg_rd_addr    (dbg_rd_addr        ),
 
     .S_CLK      (S_CLK   ),        //sdram clock
     .S_CKE      (S_CKE   ),        //sdram clock enable

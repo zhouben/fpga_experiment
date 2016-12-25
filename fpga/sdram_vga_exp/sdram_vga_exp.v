@@ -2,7 +2,7 @@
 
 module sdram_vga_exp #(
     parameter DISPLAY_RESOLUTION = 1024*768,
-    parameter DATA_DEPTH = 1024*240
+    parameter DATA_DEPTH = 1024*768
 )(
     input           clk_50m_i   , // 100MHz
     input           sw_rst_n    ,
@@ -53,7 +53,25 @@ assign rst_n = rst_clk_n_o & mem_rdy;
 assign mem_din = mem_rdy ? vga_gen_dout : 16'bx;
 assign mem_wr_req = mem_rdy ? vga_gen_den : 1'bx;
 assign vga_din = mem_rdy ? mem_dout : 16'd0;
+
+`ifndef MODELSIM_DBG
+
+wire [35 : 0] CONTROL0;
+wire [7 : 0] ASYNC_IN;
+wire [63 : 0] ASYNC_OUT;
+alinx_icon my_icon_inst (
+    .CONTROL0(CONTROL0) // INOUT BUS [35:0]
+);
+alinx_vio my_vio_inst (
+    .CONTROL(CONTROL0), // INOUT BUS [35:0]
+    .ASYNC_IN(ASYNC_IN),
+    .ASYNC_OUT(ASYNC_OUT) // OUT BUS [63:0]
+);
+
+assign led_0 = ASYNC_OUT[1];
+`else
 assign led_0 = 1'b0;
+`endif
 
 sdram_vga_clk_gen sdram_vga_clk_gen
 (

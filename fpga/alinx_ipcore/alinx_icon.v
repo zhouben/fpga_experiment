@@ -8,7 +8,7 @@
 // \   \   \/     Version    : 14.7
 //  \   \         Application: Xilinx CORE Generator
 //  /   /         Filename   : alinx_icon.v
-// /___/   /\     Timestamp  : Sun Oct 23 18:00:32 中国标准时间 2016
+// /___/   /\     Timestamp  : Wed Dec 21 22:31:56 中国标准时间 2016
 // \   \  /  \
 //  \___\/\___\
 //
@@ -19,11 +19,9 @@
 `timescale 1ns/1ps
 
 module alinx_icon(
-    CONTROL0,
-    CONTROL1) /* synthesis syn_black_box syn_noprune=1 */;
+    CONTROL0) /* synthesis syn_black_box syn_noprune=1 */;
 
 
 inout [35 : 0] CONTROL0;
-inout [35 : 0] CONTROL1;
 
 endmodule
