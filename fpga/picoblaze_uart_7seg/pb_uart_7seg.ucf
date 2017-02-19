@@ -1,0 +1,2 @@
+NET uart_tx                 LOC = K16 | IOSTANDARD = "LVCMOS33";
+
