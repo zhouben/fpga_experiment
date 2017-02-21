@@ -8,7 +8,7 @@ module pb_uart_7seg(
     output [7:0]    leds_o,
     output [5:0]    sels_o
 );
-localparam SEG_REFRESH_CYCLE_WIDTH = 10; // 64M
+localparam SEG_REFRESH_CYCLE_WIDTH = 26; // 64M
 
 wire    clk;
 wire    rst_n;
