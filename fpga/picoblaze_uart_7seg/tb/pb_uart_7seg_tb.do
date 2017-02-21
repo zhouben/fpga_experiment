@@ -1,6 +1,6 @@
 vlib work
 vmap work work
-vlog -reportprogress 300 -work work \
+vlog -reportprogress 300 +define+MODELSIM_SIM -work work \
          ../../uart.v          \
          ../../seven_seg/bin2bcd.v \
          ../../seven_seg/seven_seg_interface.v \

@@ -12,6 +12,7 @@ pb_uart_7seg u0(
     .clk_50m    (clk    ),
     .sw_rst_n   (rst_n  ),
     .uart_tx    (uart_tx),
+    .uart_rx    (uart_tx),
     .leds_o     (       ),
     .sels_o     (       )
 );
