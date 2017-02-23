@@ -1,0 +1,8 @@
+start: LOAD s0, 00
+loop: INPUT s1, 00
+COMPARE s0, s1
+JUMP Z, loop
+LOAD s0, s1
+ADD s1, 02
+OUTPUT s1, 01
+JUMP loop

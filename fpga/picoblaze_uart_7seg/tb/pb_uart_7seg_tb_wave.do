@@ -15,8 +15,14 @@ add wave -noupdate /pb_uart_7seg_tb/u0/uart_rx_ready
 add wave -noupdate /pb_uart_7seg_tb/u0/uart_rx_ready_d
 add wave -noupdate /pb_uart_7seg_tb/u0/_uart_rx/read
 add wave -noupdate /pb_uart_7seg_tb/u0/_uart_rx/ready
+add wave -noupdate -radix hexadecimal /pb_uart_7seg_tb/u0/out_port
+add wave -noupdate -radix hexadecimal /pb_uart_7seg_tb/u0/port_id
+add wave -noupdate -radix hexadecimal /pb_uart_7seg_tb/u0/pb_out
+add wave -noupdate /pb_uart_7seg_tb/u0/write_strobe
+add wave -noupdate /pb_uart_7seg_tb/u0/write_strobe_d
+add wave -noupdate /pb_uart_7seg_tb/u0/read_strobe
 TreeUpdate [SetDefaultTree]
-WaveRestoreCursors {{Cursor 1} {184450 ns} 0}
+WaveRestoreCursors {{Cursor 1} {20790 ns} 0}
 configure wave -namecolwidth 271
 configure wave -valuecolwidth 100
 configure wave -justifyvalue left
@@ -31,4 +37,4 @@ configure wave -griddelta 40
 configure wave -timeline 0
 configure wave -timelineunits ns
 update
-WaveRestoreZoom {0 ns} {298609 ns}
+WaveRestoreZoom {20636 ns} {20944 ns}
