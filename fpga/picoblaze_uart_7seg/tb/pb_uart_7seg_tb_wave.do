@@ -2,7 +2,6 @@ onerror {resume}
 quietly WaveActivateNextPane {} 0
 add wave -noupdate /pb_uart_7seg_tb/clk
 add wave -noupdate /pb_uart_7seg_tb/rst_n
-add wave -noupdate -radix hexadecimal /pb_uart_7seg_tb/uart_tx
 add wave -noupdate /pb_uart_7seg_tb/u0/uart_tx_ready
 add wave -noupdate /pb_uart_7seg_tb/u0/_uart_tx/state
 add wave -noupdate /pb_uart_7seg_tb/u0/_uart_tx/write
@@ -10,21 +9,24 @@ add wave -noupdate -radix unsigned /pb_uart_7seg_tb/u0/_uart_tx/sb
 add wave -noupdate -radix hexadecimal /pb_uart_7seg_tb/u0/data
 add wave -noupdate /pb_uart_7seg_tb/u0/_uart_tx/bit_flag
 add wave -noupdate /pb_uart_7seg_tb/u0/data_rx
-add wave -noupdate /pb_uart_7seg_tb/u0/data_rx_r
 add wave -noupdate /pb_uart_7seg_tb/u0/uart_rx_ready
 add wave -noupdate /pb_uart_7seg_tb/u0/uart_rx_ready_d
 add wave -noupdate /pb_uart_7seg_tb/u0/_uart_rx/read
-add wave -noupdate /pb_uart_7seg_tb/u0/_uart_rx/ready
 add wave -noupdate -radix hexadecimal /pb_uart_7seg_tb/u0/out_port
 add wave -noupdate -radix hexadecimal /pb_uart_7seg_tb/u0/port_id
 add wave -noupdate -radix hexadecimal /pb_uart_7seg_tb/u0/pb_out
 add wave -noupdate /pb_uart_7seg_tb/u0/write_strobe
 add wave -noupdate /pb_uart_7seg_tb/u0/write_strobe_d
 add wave -noupdate /pb_uart_7seg_tb/u0/read_strobe
+add wave -noupdate /pb_uart_7seg_tb/u0/uart_rx_i
+add wave -noupdate /pb_uart_7seg_tb/u0/xor_value
+add wave -noupdate /pb_uart_7seg_tb/u0/baudclk16
+add wave -noupdate /pb_uart_7seg_tb/u0/uart_din_count
+add wave -noupdate /pb_uart_7seg_tb/u0/_uart_rx/state
 TreeUpdate [SetDefaultTree]
-WaveRestoreCursors {{Cursor 1} {20790 ns} 0}
-configure wave -namecolwidth 271
-configure wave -valuecolwidth 100
+WaveRestoreCursors {{Cursor 1} {91933 ns} 0}
+configure wave -namecolwidth 253
+configure wave -valuecolwidth 46
 configure wave -justifyvalue left
 configure wave -signalnamewidth 0
 configure wave -snapdistance 10
@@ -37,4 +39,4 @@ configure wave -griddelta 40
 configure wave -timeline 0
 configure wave -timelineunits ns
 update
-WaveRestoreZoom {20636 ns} {20944 ns}
+WaveRestoreZoom {91620 ns} {92061 ns}

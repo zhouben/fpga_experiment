@@ -3,16 +3,17 @@
 module pb_uart_7seg(
     input           clk_50m,
     input           sw_rst_n,
+    input           led_disp_switch,
 
-    output          uart_tx,
-    input           uart_rx,
+    output          uart_tx_o,
+    input           uart_rx_i,
     output [7:0]    leds_o,
     output [5:0]    sels_o
 );
 `ifdef MODELSIM_SIM
 localparam SEG_REFRESH_CYCLE_WIDTH = 10; // 64M
 `else
-localparam SEG_REFRESH_CYCLE_WIDTH = 26; // 64M
+localparam SEG_REFRESH_CYCLE_WIDTH = 16; // 64M
 `endif
 
 wire    clk;
@@ -27,7 +28,6 @@ wire    uart_write_kickoff;
 reg [4:0] uart_clk_count;
 
 wire    uart_rx_ready;
-reg [7:0] data_rx_r;
 reg     uart_rx_ready_d;
 
 // CPU related stuff
@@ -47,6 +47,11 @@ wire            rdl;
 reg [7:0]       pb_out;
 reg             write_strobe_d;
 
+// xor value for UART data in
+reg [7:0]       xor_value;
+// uart data count
+reg [19:0]      uart_din_count;
+
 IBUFG ibufg(
     .O (clk),
     .I (clk_50m)
@@ -56,8 +61,8 @@ seven_seg_interface _7_seg
 (
     .clk    (clk    ),
     .rst_n  (rst_n  ),
-    .data   ({8'b0, pb_out, data_rx_r, data} ),
-    .wen    (wen_7seg | uart_rx_ready_d | write_strobe_d),
+    .data   (led_disp_switch ? uart_din_count : {16'd0, xor_value} ),
+    .wen    (wen_7seg),
     .base   (1'b0   ),
     .rdy    (       ),
     .done   (       ),
@@ -70,10 +75,10 @@ uart_tx _uart_tx
     .clk        (clk                ),
     .reset      (~rst_n             ),
     .baudclk16  (baudclk16          ),
-    .tx         (uart_tx            ),
+    .tx         (uart_tx_o          ),
     .data       (data               ),
     .ready      (uart_tx_ready      ),
-    .write      (uart_write_kickoff )
+    .write      ( )
 );
 
 uart_rx _uart_rx
@@ -81,7 +86,7 @@ uart_rx _uart_rx
     .clk        (clk                ),
     .reset      (~rst_n             ),
     .baudclk16  (baudclk16          ),
-    .rx         (uart_rx            ),
+    .rx         (uart_rx_i          ),
     .data       (data_rx            ),
     .ready      (uart_rx_ready      ),
     .read       (uart_rx_ready      )
@@ -149,14 +154,10 @@ always @(posedge clk) begin
     if (~rst_n) begin
         uart_clk_count <= 0;
     end else begin
-        if (~uart_tx_ready) begin
-            if (uart_clk_count == 5'd26) begin
-                uart_clk_count <= 5'b0;
-            end else begin
-                uart_clk_count <= uart_clk_count + 1;
-            end
-        end else begin
+        if (uart_clk_count == 5'd26) begin
             uart_clk_count <= 5'b0;
+        end else begin
+            uart_clk_count <= uart_clk_count + 1;
         end
     end
 end
@@ -167,10 +168,12 @@ end
 
 always @(posedge clk) begin
     if (~rst_n) begin
-        data_rx_r <= 0;
+        uart_din_count  <= 20'd0;
+        xor_value       <= 8'd0;
     end else begin
         if (uart_rx_ready) begin
-            data_rx_r <= data_rx;
+            uart_din_count  <= uart_din_count + 20'd1;
+            xor_value       <= xor_value + data_rx;
         end
     end
 end

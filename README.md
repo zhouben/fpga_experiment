@@ -30,3 +30,6 @@ PCIe transfer experiment on MARS6 FPGA.
 1. add sdram\_vga display experiment. The data to display is written into sdram and then VGA module reads it to display.
     1. entry: sdram\_vga\_exp.v
 1. add picoblaze\_uart\_7seg, receive data from uart and display it via 7-segments. Integrate picoblaze soft core to accomplish it. 
+    1. [modify] add uart receive and simple crc test. Receiving data by 115200,8N1 pass on FPGA platform
+    1. Add python script to send data via UART.
+

@@ -1,2 +1,4 @@
-NET uart_tx                 LOC = K16 | IOSTANDARD = "LVCMOS33";
+NET uart_tx_o               LOC = K16 | IOSTANDARD = "LVCMOS33";
+NET uart_rx_i               LOC = J16 | IOSTANDARD = "LVCMOS33";
+NET led_disp_switch         LOC = C3  | IOSTANDARD = "LVCMOS33";
 
