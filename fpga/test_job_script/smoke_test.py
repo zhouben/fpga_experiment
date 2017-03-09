@@ -3,6 +3,7 @@ import sys
 import subprocess
 
 test_case_array = [
+        {"name" : "crc_tb",       "description" : "test bench for crc moudle",       "path" : '../crc/',         "script" : 'crc_tb.do' },
         {"name" : "sdram_mcb_tb", "description" : "test bench for sdram_mcb module", "path" : '../sdram_ip/tb/', "script" : 'sdram_mcb_tb.do'},
         {"name" : "sdram_top_tb", "description" : "test bench for sdram_top module", "path" : '../sdram_ip/tb/', "script" : 'tb.do'},
         {"name" : "vga_data_gen_tb", "description" : "test bench for vga_data_gen module", "path" : '../sdram_vga_exp/tb/', "script" : 'vga_data_gen_tb.do'},
