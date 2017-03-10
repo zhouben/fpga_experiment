@@ -1,3 +1,7 @@
+/*
+* Receive data from UART and crc them.
+    * Update received data number and crc value via 7-segment LED.
+    */
 `timescale 1ns / 1ns
 
 module pb_uart_7seg(
@@ -48,7 +52,8 @@ reg [7:0]       pb_out;
 reg             write_strobe_d;
 
 // xor value for UART data in
-reg [7:0]       xor_value;
+reg  [31:0]      crc;
+wire [31:0]      crc_out;
 // uart data count
 reg [19:0]      uart_din_count;
 
@@ -61,7 +66,7 @@ seven_seg_interface _7_seg
 (
     .clk    (clk    ),
     .rst_n  (rst_n  ),
-    .data   (led_disp_switch ? uart_din_count : {16'd0, xor_value} ),
+    .data   (led_disp_switch ? uart_din_count : crc[23:0] ),
     .wen    (wen_7seg),
     .base   (1'b0   ),
     .rdy    (       ),
@@ -90,6 +95,15 @@ uart_rx _uart_rx
     .data       (data_rx            ),
     .ready      (uart_rx_ready      ),
     .read       (uart_rx_ready      )
+);
+
+crc _crc
+(
+    .clk        (clk            ),
+    .reset      (~rst_n         ),
+    .en         (uart_rx_ready  ),
+    .din        (data_rx        ),
+    .crc_out    (crc_out        )
 );
 
 kcpsm6
@@ -169,11 +183,11 @@ end
 always @(posedge clk) begin
     if (~rst_n) begin
         uart_din_count  <= 20'd0;
-        xor_value       <= 8'd0;
+        crc             <= 32'd0;
     end else begin
         if (uart_rx_ready) begin
             uart_din_count  <= uart_din_count + 20'd1;
-            xor_value       <= xor_value + data_rx;
+            crc             <= {crc_out[7:0], crc_out[15:8], crc_out[23:16], crc_out[31:24]};
         end
     end
 end

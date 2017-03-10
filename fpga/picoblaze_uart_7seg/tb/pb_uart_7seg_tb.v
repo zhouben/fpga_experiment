@@ -22,23 +22,32 @@ pb_uart_7seg u0(
 // Clock generation
 always #(CLOCKPERIOD / 2) clk <= ~clk;
 
-task tsk_host_send_to_uart;
-    begin
-        #1000 $display("[%t] start send data to uart", $realtime);
+task tsk_host_send_to_uart_8N1;
+    input integer data;
+    integer byte_value;
+    integer byte;
+    integer bit;
 
-        #8681 uart_rx_i = 0; // start bit
-        #8680 uart_rx_i = 1; // 0
-        #8681 uart_rx_i = 0;
-        #8680 uart_rx_i = 1;
-        #8681 uart_rx_i = 0;
-        #8680 uart_rx_i = 1; // 4
-        #8681 uart_rx_i = 0;
-        #8680 uart_rx_i = 1;
-        #8681 uart_rx_i = 0;
-        #8680 uart_rx_i = 1; // stop
-        #8681 uart_rx_i = 1; // idle
+    begin
+        #1000 $display("[%t] start send data %X to uart", $realtime, data);
+        for( byte = 0; byte < 4; byte = byte + 1)
+        begin
+            byte_value = (data >> ( 24 - byte * 8)) & 8'hFF;
+
+            #8681 uart_rx_i = 0; // start bit
+            for (bit = 0; bit < 8; bit = bit + 2)
+            begin
+                #8681 uart_rx_i = (byte_value >> bit) & 1'b1;
+                #8680 uart_rx_i = (byte_value >> (bit + 1)) & 1'b1;
+            end
+            #8680 uart_rx_i = 1; // stop
+            #8681 uart_rx_i = 1; // idle
+        end
     end
 endtask
+
+integer data = 32'hC9034AF6;
+integer crc = 32'h760F306F;
 
 initial begin
     rst_n   = 1'b0;
@@ -46,14 +55,13 @@ initial begin
     clk     = 1'b0;
     #100 rst_n = 1'b1;
 
-    #40
-    @(posedge clk)
-    @(posedge clk)
+    repeat (2) @(posedge clk);
 
     $display("[%t] to call task", $realtime);
-    tsk_host_send_to_uart();
+    tsk_host_send_to_uart_8N1(data);
+    repeat (2) @(posedge clk);
+    $display("[%t] data: %X  crc %X, result: %s", $realtime, data, u0.crc, (crc == u0.crc) ? "PASSED" : "FAILED");
 
-    #300_000 $display("[%t] TEST PASSED", $realtime);
-    $stop;
+    #1000 $finish(0);
 end
 endmodule
