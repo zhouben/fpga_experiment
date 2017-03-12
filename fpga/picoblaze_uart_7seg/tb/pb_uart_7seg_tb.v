@@ -62,6 +62,8 @@ initial begin
     repeat (2) @(posedge clk);
     $display("[%t] data: %X  crc %X, result: %s", $realtime, data, u0.crc, (crc == u0.crc) ? "PASSED" : "FAILED");
 
-    #1000 $finish(0);
+    tsk_host_send_to_uart_8N1(32'h53544F50);
+
+    #1000_000 $finish(0);
 end
 endmodule

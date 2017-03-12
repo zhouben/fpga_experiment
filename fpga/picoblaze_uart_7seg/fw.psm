@@ -1,8 +1,91 @@
-start: LOAD s0, 00
-loop: INPUT s1, 00
-COMPARE s0, s1
-JUMP Z, loop
-LOAD s0, s1
-ADD s1, 02
-OUTPUT s1, 01
-JUMP loop
+;
+; detect stop magic number 'STOP'
+CONSTANT uart_rx_count_port , 00
+CONSTANT uart_rx_data_port  , 01
+CONSTANT crc_0_port         , 02
+CONSTANT crc_1_port         , 03
+CONSTANT crc_2_port         , 04
+CONSTANT crc_3_port         , 05
+CONSTANT uart_tx_ready_port , 06
+CONSTANT data_tx_port       , 00
+CONSTANT uart_tx_en_port    , 01
+
+; s0 : uart rx count
+; s1 : uart rx data
+; s2 : state
+; s3 : current uart_rx count
+; s4 : crc_0
+; s5 : crc_1
+; s6 : crc_2
+; s7 : crc_3
+; s8 : 1
+; s9 : uart_tx_ready
+start:  LOAD s2, 00
+        LOAD s8, 01
+        INPUT s0, uart_rx_count_port
+read_data:  INPUT s1, uart_rx_data_port
+state:  LOAD    sB, menu'upper
+        LOAD    sA, menu'lower
+        ADD     sA, s2
+        ADDCY   sB, 00
+        JUMP@   (sB, sA)
+menu:   JUMP    st_0
+        JUMP    st_1
+        JUMP    st_2
+        JUMP    st_3
+        JUMP    st_4
+        JUMP    st_5
+        JUMP    st_6
+
+st_0:   COMPARE s1, 53
+        JUMP    NZ, loop
+        LOAD    s2, 01
+        JUMP    loop
+
+st_1:   COMPARE s1, 54
+        JUMP    NZ, pre_loop
+        LOAD    s2, 02
+        JUMP    loop
+
+st_2:   COMPARE s1, 4F
+        JUMP    NZ, pre_loop
+        LOAD    s2, 03
+        JUMP    loop
+
+st_3:   COMPARE s1, 50
+        JUMP    NZ, pre_loop
+        LOAD    s2, 04
+        INPUT   s4, crc_0_port
+        INPUT   s5, crc_1_port
+        INPUT   s6, crc_2_port
+        INPUT   s7, crc_3_port
+        OUTPUT  s4, data_tx_port
+        OUTPUT  s8, uart_tx_en_port
+        JUMP    wait_tx_done
+
+st_4:   OUTPUT  s5, data_tx_port
+        OUTPUT  s8, uart_tx_en_port
+        LOAD    s2, 05
+        JUMP    wait_tx_done
+
+st_5:   OUTPUT  s6, data_tx_port
+        OUTPUT  s8, uart_tx_en_port
+        LOAD    s2, 06
+        JUMP    wait_tx_done
+
+st_6:   OUTPUT  s7, data_tx_port
+        OUTPUT  s8, uart_tx_en_port
+        LOAD    s2, 00
+        JUMP    wait_tx_done
+
+wait_tx_done: INPUT   s9, uart_tx_ready_port
+        COMPARE s9, 01
+        JUMP    Z, state
+        JUMP    wait_tx_done
+
+pre_loop: LOAD  s2, 00
+loop:   INPUT   s3, uart_rx_count_port
+        COMPARE s0, s3
+        JUMP    Z, loop
+        LOAD    s0, s3
+        JUMP    read_data

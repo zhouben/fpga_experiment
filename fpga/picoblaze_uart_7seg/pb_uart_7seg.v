@@ -23,16 +23,16 @@ localparam SEG_REFRESH_CYCLE_WIDTH = 16; // 64M
 wire    clk;
 wire    rst_n;
 reg [SEG_REFRESH_CYCLE_WIDTH-1:0] refresh_count;
-reg     [7:0] data;
-wire     [7:0] data_rx;
 wire    wen_7seg;
-wire    baudclk16;
-wire    uart_tx_ready;
-wire    uart_write_kickoff;
-reg [4:0] uart_clk_count;
+
+reg  [4:0]  uart_clk_count;
+reg  [7:0]  data_tx;
+wire [7:0]  data_rx;
+wire        baudclk16;
+wire        uart_tx_ready;
+reg         uart_tx_en;
 
 wire    uart_rx_ready;
-reg     uart_rx_ready_d;
 
 // CPU related stuff
 
@@ -41,7 +41,7 @@ wire    [17:0]  instruction;
 wire            bram_enable;
 wire    [7:0]   port_id;
 wire    [7:0]   out_port;
-wire    [7:0]   in_port;
+reg     [7:0]   in_port;
 wire            write_strobe;
 wire            k_write_strobe;
 wire            read_strobe;
@@ -56,6 +56,7 @@ reg  [31:0]      crc;
 wire [31:0]      crc_out;
 // uart data count
 reg [19:0]      uart_din_count;
+reg  [7:0]      data_rx_r;
 
 IBUFG ibufg(
     .O (clk),
@@ -68,7 +69,7 @@ seven_seg_interface _7_seg
     .rst_n  (rst_n  ),
     .data   (led_disp_switch ? uart_din_count : crc[23:0] ),
     .wen    (wen_7seg),
-    .base   (1'b0   ),
+    .base   (led_disp_switch ? 1'b1 : 1'b0   ),
     .rdy    (       ),
     .done   (       ),
     .leds_o (leds_o ),
@@ -81,9 +82,9 @@ uart_tx _uart_tx
     .reset      (~rst_n             ),
     .baudclk16  (baudclk16          ),
     .tx         (uart_tx_o          ),
-    .data       (data               ),
+    .data       (data_tx            ),
     .ready      (uart_tx_ready      ),
-    .write      ( )
+    .write      (uart_tx_en         )
 );
 
 uart_rx _uart_rx
@@ -141,10 +142,8 @@ fw _fw
 
 assign rst_n = sw_rst_n;
 assign wen_7seg = (refresh_count == 1) ? 1'b1 : 1'b0;
-assign uart_write_kickoff = (refresh_count == 1) ? 1'b1 : 1'b0;
 assign baudclk16 = (uart_clk_count == 5'd26) ? 1'b1 : 1'b0;
 assign kcpsm6_reset = rdl | ~rst_n;
-assign in_port = data;
 
 always @(posedge clk) begin
     if (~rst_n) begin
@@ -156,14 +155,15 @@ end
 
 always @(posedge clk) begin
     if (~rst_n) begin
-        data <= 6;
+        data_rx_r <= 0;
     end else begin
-        if (refresh_count == {SEG_REFRESH_CYCLE_WIDTH{1'b1}}) begin
-            data <= data + 1;
+        if (uart_rx_ready) begin
+            data_rx_r <= data_rx;
         end
     end
 end
 
+// to generazte baudrate clock 16 for UART
 always @(posedge clk) begin
     if (~rst_n) begin
         uart_clk_count <= 0;
@@ -177,10 +177,6 @@ always @(posedge clk) begin
 end
 
 always @(posedge clk) begin
-    uart_rx_ready_d <= uart_rx_ready;
-end
-
-always @(posedge clk) begin
     if (~rst_n) begin
         uart_din_count  <= 20'd0;
         crc             <= 32'd0;
@@ -188,6 +184,35 @@ always @(posedge clk) begin
         if (uart_rx_ready) begin
             uart_din_count  <= uart_din_count + 20'd1;
             crc             <= {crc_out[7:0], crc_out[15:8], crc_out[23:16], crc_out[31:24]};
+        end
+    end
+end
+
+// Picoblaze r/w uart
+always @(*) begin
+    case (port_id)
+        8'd0   : in_port <= uart_din_count;
+        8'd1   : in_port <= data_rx_r;
+        8'd2   : in_port <= crc[ 7: 0];
+        8'd3   : in_port <= crc[15: 8];
+        8'd4   : in_port <= crc[23:16];
+        8'd5   : in_port <= crc[31:24];
+        8'd6   : in_port <= {7'd0, uart_tx_ready};
+        default: in_port <= 8'd0;
+    endcase
+end
+
+always @(posedge clk) begin
+    if (~rst_n) begin
+        data_tx <= 8'd0;
+        uart_tx_en <= 1'b0;
+    end else begin
+        uart_tx_en <= 1'b0;
+        if (write_strobe) begin
+            case (port_id)
+                8'd0    : data_tx <= out_port;
+                8'd1    : uart_tx_en <= out_port[0];
+            endcase
         end
     end
 end
@@ -206,5 +231,4 @@ always @(posedge clk) begin
         end
     end
 end
-
 endmodule
