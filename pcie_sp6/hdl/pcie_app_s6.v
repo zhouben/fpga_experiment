@@ -144,8 +144,6 @@ module pcie_app_s6
 
   assign fc_sel = 3'b0;
 
-  assign rx_np_ok = 1'b1;
-
   assign tx_cfg_gnt = 1'b1;
 
   assign cfg_err_cor = 1'b0;
@@ -197,6 +195,8 @@ module pcie_app_s6
     .m_axis_rx_tvalid( m_axis_rx_tvalid ),          // I
     .m_axis_rx_tready( m_axis_rx_tready ),          // O
     .m_axis_rx_tuser ( m_axis_rx_tuser ),           // I
+
+    .rx_np_ok (rx_np_ok ),                          // O
 
     .cfg_to_turnoff   ( cfg_to_turnoff   ),         // I
     .cfg_turnoff_ok   ( cfg_turnoff_ok   ),         // O

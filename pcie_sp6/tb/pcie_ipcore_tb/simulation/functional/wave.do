@@ -31,8 +31,15 @@ add wave -noupdate /board/EP/tx_buf_av
 add wave -noupdate /board/EP/tx_err_drop
 add wave -noupdate /board/EP/tx_cfg_req
 add wave -noupdate /board/EP/tx_cfg_gnt
+add wave -noupdate -divider MyMemCtrl
+add wave -noupdate -radix hexadecimal /board/EP/app/PIO/PIO_EP/EP_MEM/addr_0
+add wave -noupdate -radix hexadecimal /board/EP/app/PIO/PIO_EP/EP_MEM/addr_1
+add wave -noupdate -radix binary /board/EP/app/PIO/PIO_EP/EP_MEM/cmd
+add wave -noupdate -radix decimal /board/EP/app/PIO/PIO_EP/EP_MEM/cpl_0
+add wave -noupdate -radix decimal /board/EP/app/PIO/PIO_EP/EP_MEM/cpl_1
+add wave -noupdate -radix decimal /board/EP/app/PIO/PIO_EP/EP_MEM/len
 TreeUpdate [SetDefaultTree]
-WaveRestoreCursors {{Cursor 1} {67927102000 fs} 0} {{Cursor 2} {67911102000 fs} 0}
+WaveRestoreCursors {{Cursor 1} {70623965300 fs} 0} {{Cursor 2} {67879529040 fs} 0}
 configure wave -namecolwidth 193
 configure wave -valuecolwidth 61
 configure wave -justifyvalue left
@@ -47,4 +54,4 @@ configure wave -griddelta 40
 configure wave -timeline 0
 configure wave -timelineunits ns
 update
-WaveRestoreZoom {67834677890 fs} {67973894370 fs}
+WaveRestoreZoom {70581052240 fs} {70871677260 fs}

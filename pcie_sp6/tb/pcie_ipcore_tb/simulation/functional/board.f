@@ -46,4 +46,4 @@ sys_clk_gen.v
 ../../../../hdl/PIO_32_TX_ENGINE.v
 ../../../../hdl/PIO_TO_CTRL.v
 ../../../../hdl/PIO.v
-
+../../../../hdl/my_ep_mem_ctrl.v
