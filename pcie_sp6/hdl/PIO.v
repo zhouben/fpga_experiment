@@ -81,6 +81,8 @@ module PIO (
   output                        m_axis_rx_tready,
   input    [21:0]               m_axis_rx_tuser,
 
+  output                        rx_np_ok,
+
   input                         cfg_to_turnoff,
   output                        cfg_turnoff_ok,
 
@@ -118,6 +120,8 @@ module PIO (
 
     .req_compl_o(req_compl),                     // O
     .compl_done_o(compl_done),                   // O
+
+    .rx_np_ok ( rx_np_ok ),                      // O
 
     .cfg_completer_id ( cfg_completer_id ),      // I [15:0]
     .cfg_bus_mstr_enable ( cfg_bus_mstr_enable ) // I

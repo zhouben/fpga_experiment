@@ -80,6 +80,9 @@ module PIO_EP (
   output            req_compl_o,
   output            compl_done_o,
 
+  // Rx Non-Posted OK
+  output            rx_np_ok,
+
   // Configuration
   input [15:0]      cfg_completer_id,
   input             cfg_bus_mstr_enable
@@ -115,7 +118,29 @@ module PIO_EP (
   //
   // ENDPOINT MEMORY : 8KB memory aperture implemented in FPGA BlockRAM(*)
   //
+`define MY_MEM_MGMT
+`ifdef MY_MEM_MGMT
+  MY_EP_MEM_CTRL EP_MEM (
+    .clk(clk),                           // I
+    .rst_n(rst_n),                       // I
 
+    .rx_np_ok(rx_np_ok),                 // O
+
+    // Read Port
+    .rd_addr_i(rd_addr),                 // I [10:0]
+    .rd_be_i(rd_be),                     // I [3:0]
+    .rd_data_o(rd_data),                 // O [31:0]
+
+    // Write Port
+    .wr_addr_i(wr_addr),                 // I [10:0]
+    .wr_be_i(wr_be),                     // I [7:0]
+    .wr_data_i(wr_data),                 // I [31:0]
+    .wr_en_i(wr_en),                     // I
+    .wr_busy_o(wr_busy)                  // O
+
+    );
+`else
+  assign rx_np_ok = 1'b1;
   PIO_EP_MEM_ACCESS EP_MEM (
     .clk(clk),                           // I
     .rst_n(rst_n),                       // I
@@ -133,7 +158,7 @@ module PIO_EP (
     .wr_busy_o(wr_busy)                  // O
 
     );
-
+`endif
 
   //
   // Local-Link Receive Controller
