@@ -5,8 +5,8 @@ module MY_EP_MEM_CTRL (
     input                 rst_n,
 
     output                rx_np_ok,
-    input                 cmd_compl_i; // 1: active
-    input  [1:0]          cmd_id_i;   // cmd ID
+    input                 cmd_compl_i, // 1: active
+    input  [1:0]          cmd_id_i,   // cmd ID
 
     input                 req_compl_i,   // from RX engine
     input                 req_compl_with_data_i,

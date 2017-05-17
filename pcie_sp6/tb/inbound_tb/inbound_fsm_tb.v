@@ -62,8 +62,9 @@ task tsk_init;
         us_cmd_fifo_prog_full_i = 0;
     end
 endtask
+
 // write and read back addr_0
-task tsk_wr_addr;
+task tsk_wr_register;
     integer data;
     begin
         data = $random << 2;
@@ -79,12 +80,47 @@ task tsk_wr_addr;
         rd_be_i = 8'hFF;
         @(posedge clk);
         if (rd_data_o != data) begin
-            $display("[%t] W/R Test FAILED: rd_data_o %8x != expected %8x\n", $realtime, rd_data_o, data);
+            $display("[%t] Write Addr_0 Test FAILED: rd_data_o %8x != expected %8x\n", $realtime, rd_data_o, data);
         end else begin
-            $display("[%t] W/R Test PASSED: rd_data_o %8x == expected %8x\n", $realtime, rd_data_o, data);
+            $display("[%t] Write Addr_0 Test PASSED: rd_data_o %8x == expected %8x\n", $realtime, rd_data_o, data);
         end
     end
 
+endtask
+
+// Simulate that host reads register. inbound_fsm should issue cmd to notify
+// complete the read register request with CPLD.
+task tsk_rd_register;
+    begin
+        req_tc_i = 0;
+        req_td_i = 0;
+        req_ep_i = 0;
+        req_attr_i = 0;
+        req_len_i = 1;
+        req_rid_i = 0;
+        req_tag_i = 5;
+        req_be_i  = 8'h0F;
+        req_addr_i = 13'h10;
+
+        us_cmd_fifo_full_i = 0;
+        req_compl_i = 1;
+        req_compl_with_data_i = 1;
+        @(posedge clk);
+        req_compl_i = 0;
+        req_compl_with_data_i = 0;
+        fork
+            while(compl_done_o !== 1) @(posedge clk);
+            begin
+                while(us_cmd_fifo_wr_en_o !== 1) @(posedge clk);
+                if (INBOUND_FSMEx01.req_d != { req_tc_i, req_td_i, req_ep_i, req_attr_i, req_len_i, req_rid_i, req_tag_i, req_be_i, req_addr_i[7:0] } )
+                    $display("[%t] Read register FAILED: out %16x, expected %16x\n", $realtime, us_cmd_fifo_din_o, { req_tc_i, req_td_i, req_ep_i, req_attr_i, req_len_i, req_rid_i, req_tag_i, req_be_i, req_addr_i[7:0] });
+                else begin
+                    $display("[%t] Read register PASSED\n", $realtime);
+                end
+            end
+        join
+
+    end
 endtask
 
 INBOUND_FSM	INBOUND_FSMEx01
@@ -120,8 +156,6 @@ INBOUND_FSM	INBOUND_FSMEx01
 	.us_cmd_fifo_wr_en_o    	(	us_cmd_fifo_wr_en_o    	)
 ) ;
 
-
-
 // Clock generation
 always #(CLOCKPERIOD / 2) clk <= ~clk;
 initial begin
@@ -133,7 +167,8 @@ initial begin
     #40
     @(posedge clk)
     @(posedge clk)
-    tsk_wr_addr();
+    tsk_wr_register();
+    tsk_rd_register();
 
     #1000 $display("[%t] TEST Complete", $realtime);
     $finish(0);

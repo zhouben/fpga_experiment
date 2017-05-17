@@ -31,7 +31,7 @@ module INBOUND_FSM (
 
     input                 us_cmd_fifo_full_i,
     input                 us_cmd_fifo_prog_full_i,
-    output [127:0]        us_cmd_fifo_din_o,
+    output reg [127:0]    us_cmd_fifo_din_o,
     output                us_cmd_fifo_wr_en_o
 );
 
@@ -41,7 +41,7 @@ localparam US_CMD_WR32_TYPE = 2'b10;
 localparam US_CMD_INVALID   = 2'b11;
 
 localparam WR_MEM_IDLE          = 3'd0;
-localparam WR_MEM_GOING         = 3'd1;
+localparam WR_MEM_WRITING       = 3'd1;
 localparam WR_MEM_PRE_ISSUE_CMD = 3'd2;
 localparam WR_MEM_ISSUE_CMD     = 3'd3;
 localparam WR_MEM_PRE_ISSUE_CPL = 3'd4;
@@ -65,7 +65,6 @@ reg [31:0]  addr_0;  // host memory address 0
 reg [31:0]  addr_1;  // host memory address 1
 
 reg  [1:0]   us_cmd_type;   // one of US_CMD_xxx_TYPE
-wire [127:0] us_cmd_fifo_din; // upstream cmd
 
 reg [2:0]   inbound_state;
 reg [2:0]   inbound_state_next;
@@ -74,6 +73,7 @@ wire        us_cmd_fifo_empty;
 wire        us_cmd_fifo_prog_full;
 reg [54:0]  req_d;
 wire [1:0]  issue_cmd_flag;
+wire [31:0] host_addr_to_write;
 
 assign wr_busy_o = (inbound_state == WR_MEM_IDLE) ? 1'b0 : 1'b1;
 assign cmd_id = (cmd[0] ? 2'd0 : (cmd[1] ? 2'd1 : 2'd0));
@@ -90,14 +90,23 @@ always @(*) begin
 
 end
 
-assign us_cmd_wr_en_o = ((inbound_state == WR_MEM_ISSUE_CMD) || (inbound_state == WR_MEM_ISSUE_CPL)) ? 1'b1 : 1'b0;
-assign us_cmd_fifo_din[54:0] = req_d;
-assign us_cmd_fifo_din[63:55] = {
-    us_cmd_type,    // 2 bits
-    len,            // 5 bits
-    cmd_id          // 2 bits
-    };
-assign us_cmd_fifo_din[127:64] = (inbound_state == WR_MEM_ISSUE_CMD) ? (cmd[0]? addr_0 : addr_1) : 64'd0;
+assign us_cmd_fifo_wr_en_o = ((inbound_state == WR_MEM_ISSUE_CMD) || (inbound_state == WR_MEM_ISSUE_CPL) || (inbound_state == WR_MEM_ISSUE_CPLD)) ? 1'b1 : 1'b0;
+always @(*) begin
+    case (inbound_state)
+        WR_MEM_ISSUE_CPLD, WR_MEM_ISSUE_CPL: us_cmd_fifo_din_o[54:0] <= req_d;
+        WR_MEM_ISSUE_CMD                   : us_cmd_fifo_din_o[54:0] <= {23'd0, host_addr_to_write};
+        default                            : us_cmd_fifo_din_o[54:0] <= 0;
+    endcase
+end
+
+always @(*) begin
+    us_cmd_fifo_din_o[63:55] <= {
+        us_cmd_type,    // 2 bits
+        len,            // 5 bits
+        cmd_id          // 2 bits
+        };
+    end
+assign host_addr_to_write = (cmd[0]? addr_0 : addr_1);
 
 always @(posedge clk) begin
     if (!rst_n) begin
@@ -106,6 +115,8 @@ always @(posedge clk) begin
         req_d <= { req_tc_i, req_td_i, req_ep_i, req_attr_i, req_len_i, req_rid_i, req_tag_i, req_be_i, req_addr_i[7:0] };
     end
 end
+
+assign compl_done_o = ((inbound_state == WR_MEM_ISSUE_CPL) || (inbound_state == WR_MEM_ISSUE_CPLD)) ? 1 : 0;
 
 // TODO template
 always @(posedge clk) begin
@@ -184,7 +195,7 @@ always @(posedge clk) begin
         len     <= 8'd6;
         addr_0  <= 32'd0;
         addr_1  <= 32'd0;
-    end else if (inbound_state_next == WR_MEM_GOING) begin
+    end else if (inbound_state_next == WR_MEM_WRITING) begin
         case (wr_addr_i[4:2])
             3'b001 : len    <= wr_data_i;
             3'b100 : addr_0 <= wr_data_i;
@@ -217,7 +228,7 @@ always @(*) begin
                                 inbound_state_next <= inbound_state;
                             end
                         end
-                        3'b001, 3'b100, 3'b110 : inbound_state_next <= WR_MEM_GOING; 
+                        3'b001, 3'b100, 3'b110 : inbound_state_next <= WR_MEM_WRITING; 
                         default: inbound_state_next <= inbound_state;
                     endcase
                 end
@@ -232,7 +243,7 @@ always @(*) begin
                 2'b11 : inbound_state_next <= 3'bxxx;
             endcase
         end
-        WR_MEM_GOING: inbound_state_next <= WR_MEM_IDLE;
+        WR_MEM_WRITING: inbound_state_next <= WR_MEM_IDLE;
         WR_MEM_PRE_ISSUE_CMD: begin
             inbound_state_next <= (us_cmd_fifo_full_i) ? WR_MEM_PRE_ISSUE_CMD : WR_MEM_ISSUE_CMD;
         end
@@ -263,4 +274,19 @@ always @(*) begin
     endcase
 end
 
+// synthesis translate_off
+reg [8*20:0] inbound_state_ascii;
+always @(*) begin
+    case (inbound_state)
+        WR_MEM_IDLE          : inbound_state_ascii <= "IDLE";
+        WR_MEM_WRITING       : inbound_state_ascii <= "WRITING";
+        WR_MEM_PRE_ISSUE_CMD : inbound_state_ascii <= "PRE_CMD";
+        WR_MEM_ISSUE_CMD     : inbound_state_ascii <= "ISSUE_CMD";
+        WR_MEM_PRE_ISSUE_CPL : inbound_state_ascii <= "PRE_CPL";
+        WR_MEM_ISSUE_CPL     : inbound_state_ascii <= "ISSUE_CPL";
+        WR_MEM_PRE_ISSUE_CPLD: inbound_state_ascii <= "PRE_CPLD";
+        WR_MEM_ISSUE_CPLD    : inbound_state_ascii <= "ISSUE_CPLD";
+    endcase
+end
+// synthesis translate_on
 endmodule
