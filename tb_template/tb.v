@@ -33,6 +33,7 @@ initial begin
     @(posedge clk)
     @(posedge clk)
 
-    #10000 $display("[%t] TEST PASSED", $realtime);
+    #100 $display("[%t] TEST PASSED", $realtime);
+    $finish(0);
 end
 endmodule

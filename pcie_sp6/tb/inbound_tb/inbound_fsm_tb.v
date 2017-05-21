@@ -1,5 +1,7 @@
 `timescale 1ns / 1ps
 
+`include "param.v"
+
 module inbound_fsm_tb();
 
 parameter CLOCKPERIOD = 20;
@@ -12,12 +14,11 @@ reg [31:0]  din     ;
 wire [31:0] dout    ;
 wire        done    ;
 
-wire              rx_np_ok_o;
-reg               cmd_compl_i;
+reg               up_wr_cmd_compl_i;
 reg   [1:0]       cmd_id_i;
 reg               req_compl_i;
 reg               req_compl_with_data_i;
-wire              compl_done_o;
+wire              to_rxe_compl_done_o;
 reg   [10:0]      rd_addr_i;
 reg   [3:0]       rd_be_i;
 wire  [31:0]      rd_data_o;
@@ -42,7 +43,7 @@ wire              us_cmd_fifo_wr_en_o;
 
 task tsk_init;
     begin
-        cmd_compl_i = 0;
+        up_wr_cmd_compl_i = 0;
         req_compl_i = 0;
         req_compl_with_data_i = 0;
         wr_en_i     = 0;
@@ -66,17 +67,19 @@ endtask
 // write and read back addr_0
 task tsk_wr_addr_register;
     integer data;
+    integer addr;
     begin
+        addr = 4;   // addr_0
         data = $random << 2;
         wr_en_i = 1;
-        wr_addr_i = 16;
+        wr_addr_i = addr;
         wr_be_i = 8'hFF;
         wr_data_i = data;
         @(posedge clk);
         wr_en_i = 0;
         @(posedge clk);
         while(wr_busy_o == 1) @(posedge clk);
-        rd_addr_i = 16;
+        rd_addr_i = addr;
         rd_be_i = 8'hFF;
         @(posedge clk);
         if (rd_data_o != data) begin
@@ -109,10 +112,10 @@ task tsk_rd_register;
         req_compl_i = 0;
         req_compl_with_data_i = 0;
         fork
-            while(compl_done_o !== 1) @(posedge clk);
+            while(to_rxe_compl_done_o !== 1) @(posedge clk);
             begin
                 while(us_cmd_fifo_wr_en_o !== 1) @(posedge clk);
-                if (INBOUND_FSMEx01.req_d != { req_tc_i, req_td_i, req_ep_i, req_attr_i, req_len_i, req_rid_i, req_tag_i, req_be_i, req_addr_i[7:0] } )
+                if (INBOUND_FSMEx01.req_d != { req_tc_i, req_td_i, req_ep_i, req_attr_i, req_len_i, req_rid_i, req_tag_i, req_be_i, req_addr_i[5:0] } )
                     $display("[%8t] Read register FAILED: out %16x, expected %16x\n", $realtime, us_cmd_fifo_din_o, { req_tc_i, req_td_i, req_ep_i, req_attr_i, req_len_i, req_rid_i, req_tag_i, req_be_i, req_addr_i[7:0] });
                 else begin
                     $display("[%8t] Read register PASSED\n", $realtime);
@@ -128,7 +131,7 @@ endtask
 // 2. check output for FIFO, 
 //
 // after some cycles, <- write ADDR0 and check.
-// 3. set cmd_compl_i, cmd_id
+// 3. set up_wr_cmd_compl_i, cmd_id
 // 4. check state.
 task tsk_wr_cmd_register;
     integer data[1:0];
@@ -143,7 +146,7 @@ task tsk_wr_cmd_register;
 
     begin
         wr_en_i = 1;
-        wr_addr_i = 4;
+        wr_addr_i = 1;  // len register
         wr_be_i = 8'hFF;
         wr_data_i = 7;  // 128 bytes
         @(posedge clk);
@@ -155,7 +158,7 @@ task tsk_wr_cmd_register;
         begin
             data[_i] = $random << 2;
             wr_en_i = 1;
-            wr_addr_i = 16 + _i * 8;
+            wr_addr_i = 4 + _i * 2; // ADDR0, ADDR1
             wr_be_i = 8'hFF;
             wr_data_i = data[_i];
             @(posedge clk);
@@ -187,7 +190,7 @@ task tsk_wr_cmd_register;
                     len      = us_cmd_fifo_din_o[61:57];
                     cmd_id   = us_cmd_fifo_din_o[56:55];
                     addr     = us_cmd_fifo_din_o[31:0];
-                    if ((cmd_type != INBOUND_FSMEx01.US_CMD_WR32_TYPE) || (len != 7) || (cmd_id != _i) || (addr != data[_i])) begin
+                    if ((cmd_type != `US_CMD_WR32_TYPE) || (len != 7) || (cmd_id != _i) || (addr != data[_i])) begin
                         str = "FAILED";
                         flag = 1;
                     end else begin
@@ -208,9 +211,9 @@ task tsk_wr_cmd_register;
                 for(_i = 0; _i < 2; _i = _i + 1)
                 begin
                     cmd_id_i = _i;
-                    cmd_compl_i = 1;
+                    up_wr_cmd_compl_i = 1;
                     @(posedge clk);
-                    cmd_compl_i = 0;
+                    up_wr_cmd_compl_i = 0;
                     @(posedge clk);
                     if ((INBOUND_FSMEx01.state & ( 1 << _i))!= 0) begin
                         $display("[%8t] complete previous No.%1d write command FAILED, but state %2d, should be 0\n", $realtime, _i, INBOUND_FSMEx01.state);
@@ -228,12 +231,11 @@ INBOUND_FSM	INBOUND_FSMEx01
 (
 	.clk                    	(	clk                    	),
 	.rst_n                  	(	rst_n                  	),
-	.rx_np_ok_o             	(	rx_np_ok_o             	),
-	.cmd_compl_i            	(	cmd_compl_i            	),
+	.up_wr_cmd_compl_i         	(	up_wr_cmd_compl_i            	),
 	.cmd_id_i               	(	cmd_id_i               	),
 	.req_compl_i            	(	req_compl_i            	),
 	.req_compl_with_data_i  	(	req_compl_with_data_i  	),
-	.compl_done_o           	(	compl_done_o           	),
+	.to_rxe_compl_done_o        (	to_rxe_compl_done_o     ),
 	.rd_addr_i              	(	rd_addr_i              	),
 	.rd_be_i                	(	rd_be_i                	),
 	.rd_data_o              	(	rd_data_o              	),
