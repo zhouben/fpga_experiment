@@ -4,6 +4,7 @@ import subprocess
 
 test_case_array = [
         {"name" : "inbound_fsm_tb",       "description" : "test bench for inbound moudle",       "path" : './inbound_tb/',         "script" : 'inbound_fsm_tb.do' },
+        {"name" : "us_cmd_fifo_tb",       "description" : "test bench for upstream cmd fifo",       "path" : './us_cmd_fsm_tb/',         "script" : 'us_cmd_fifo_tb_sv.do' },
         ]
 
 origin_path = os.getcwd()
