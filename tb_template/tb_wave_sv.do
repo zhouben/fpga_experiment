@@ -2,11 +2,6 @@ onerror {resume}
 quietly WaveActivateNextPane {} 0
 add wave -noupdate                    /xxx_tb/clk
 add wave -noupdate                    /xxx_tb/rst_n
-add wave -noupdate -radix hexadecimal /xxx_tb/din
-add wave -noupdate                    /xxx_tb/wen 
-add wave -noupdate                    /xxx_tb/rdy 
-add wave -noupdate -radix hexadecimal /xxx_tb/dout
-add wave -noupdate                    /xxx_tb/done
 
 TreeUpdate [SetDefaultTree]
 WaveRestoreCursors {{Cursor 1} {217 ns} 0}

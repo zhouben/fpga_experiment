@@ -112,6 +112,6 @@ initial begin
     tsk_wr_rd_test();
 
     #100 $display("[%t] TEST PASSED", $realtime);
-    $finish(1);
+    $finish(0);
 end
 endmodule

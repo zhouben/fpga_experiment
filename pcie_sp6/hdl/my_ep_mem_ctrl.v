@@ -38,7 +38,7 @@ module MY_EP_MEM_CTRL (
 
     input       [10:0]    rd_addr_i, /* read port */
     input       [3:0]     rd_be_i,
-    output reg  [31:0]    rd_data_o,
+    output      [31:0]    rd_data_o,
 
     input       [10:0]    wr_addr_i, /* write port */
     input       [7:0]     wr_be_i,
@@ -88,7 +88,7 @@ INBOUND_FSM inbound_fsm_i (
     .req_addr_i                 (req_addr_i           ),
     .us_cmd_fifo_full_i         (us_cmd_fifo_full         ),
     .us_cmd_fifo_prog_full_i    (us_cmd_fifo_prog_full),
-    .us_cmd_fifo_dout_o         (us_cmd_fifo_din      ),
+    .us_cmd_fifo_din_o          (us_cmd_fifo_din      ),
     .us_cmd_fifo_wr_en_o        (us_cmd_fifo_wr_en    )
 );
 
