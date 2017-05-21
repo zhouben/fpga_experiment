@@ -14,12 +14,11 @@ reg [31:0]  din     ;
 wire [31:0] dout    ;
 wire        done    ;
 
-wire              rx_np_ok_o;
 reg               up_wr_cmd_compl_i;
 reg   [1:0]       cmd_id_i;
 reg               req_compl_i;
 reg               req_compl_with_data_i;
-wire              compl_done_o;
+wire              to_rxe_compl_done_o;
 reg   [10:0]      rd_addr_i;
 reg   [3:0]       rd_be_i;
 wire  [31:0]      rd_data_o;
@@ -111,7 +110,7 @@ task tsk_rd_register;
         req_compl_i = 0;
         req_compl_with_data_i = 0;
         fork
-            while(compl_done_o !== 1) @(posedge clk);
+            while(to_rxe_compl_done_o !== 1) @(posedge clk);
             begin
                 while(us_cmd_fifo_wr_en_o !== 1) @(posedge clk);
                 if (INBOUND_FSMEx01.req_d != { req_tc_i, req_td_i, req_ep_i, req_attr_i, req_len_i, req_rid_i, req_tag_i, req_be_i, req_addr_i[5:0] } )
@@ -230,12 +229,11 @@ INBOUND_FSM	INBOUND_FSMEx01
 (
 	.clk                    	(	clk                    	),
 	.rst_n                  	(	rst_n                  	),
-	.rx_np_ok_o             	(	rx_np_ok_o             	),
 	.up_wr_cmd_compl_i         	(	up_wr_cmd_compl_i            	),
 	.cmd_id_i               	(	cmd_id_i               	),
 	.req_compl_i            	(	req_compl_i            	),
 	.req_compl_with_data_i  	(	req_compl_with_data_i  	),
-	.compl_done_o           	(	compl_done_o           	),
+	.to_rxe_compl_done_o        (	to_rxe_compl_done_o     ),
 	.rd_addr_i              	(	rd_addr_i              	),
 	.rd_be_i                	(	rd_be_i                	),
 	.rd_data_o              	(	rd_data_o              	),

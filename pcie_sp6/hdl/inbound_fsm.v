@@ -4,13 +4,12 @@ module INBOUND_FSM (
     input                 clk,
     input                 rst_n,
 
-    output                rx_np_ok_o,
     input                 up_wr_cmd_compl_i, // 1: active
     input  [1:0]          cmd_id_i,   // cmd ID
 
     input                 req_compl_i,   // from RX engine
     input                 req_compl_with_data_i,
-    output                compl_done_o,
+    output                to_rxe_compl_done_o,
 
     input       [10:0]    rd_addr_i, /* read port */
     input       [3:0]     rd_be_i,
@@ -96,7 +95,8 @@ always @(*) begin
 end
 
 always @(*) begin
-    us_cmd_fifo_din_o[63:55] = {
+    us_cmd_fifo_din_o[127:55] = {
+        64'b0,
         us_cmd_type,    // 2 bits
         len,            // 5 bits
         cmd_id          // 2 bits
@@ -112,7 +112,7 @@ always @(posedge clk) begin
     end
 end
 
-assign compl_done_o = ((inbound_state == WR_MEM_ISSUE_CPL) || (inbound_state == WR_MEM_ISSUE_CPLD)) ? 1 : 0;
+assign to_rxe_compl_done_o = ((inbound_state == WR_MEM_ISSUE_CPL) || (inbound_state == WR_MEM_ISSUE_CPLD)) ? 1 : 0;
 
 // TODO template
 always @(posedge clk) begin

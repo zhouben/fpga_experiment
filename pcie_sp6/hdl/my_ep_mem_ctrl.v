@@ -5,12 +5,11 @@ module MY_EP_MEM_CTRL (
     input                 rst_n,
 
     output                rx_np_ok,
-    input                 cmd_compl_i, // 1: active
     input  [1:0]          cmd_id_i,   // cmd ID
 
     input                 req_compl_i,   // from RX engine
     input                 req_compl_with_data_i,
-    output                compl_done_o,
+    output                to_rxe_compl_done_o,     // CPL/CPLD for DS Rd
 
     input  [2:0]          req_tc_i,
     input                 req_td_i,
@@ -24,7 +23,7 @@ module MY_EP_MEM_CTRL (
 
     output                req_compl_o, // to TX engine
     output                req_compl_with_data_o,
-    input                 compl_done_i,
+    input                 txe_compl_done_i,
     output  [2:0]         req_tc_o,
     output                req_td_o,
     output                req_ep_o,
@@ -48,6 +47,8 @@ module MY_EP_MEM_CTRL (
 
 );
 
+wire            up_wr_cmd_compl;
+
 wire            us_cmd_fifo_full;
 wire            us_cmd_fifo_prog_full;
 wire            us_cmd_fifo_rd_en;
@@ -57,16 +58,15 @@ wire [127:0]    us_cmd_fifo_dout;
 wire            us_cmd_fifo_empty;
 wire [3:0]      us_fifo_data_count;
 
-
-INBOUND_FSM inbound_fsm_i (
+assign rx_np_ok = ~us_cmd_fifo_prog_full;
+INBOUND_FSM inbound_fsm_inst (
     .clk                        (clk                    ),    // input clk
     .rst_n                      (rst_n                  ),    // input rst
-    .rx_np_ok_o                 (rx_np_ok               ),    // O
-    .cmd_compl_i                (cmd_compl_i            ),    // 1: active
+    .up_wr_cmd_compl_i          (up_wr_cmd_compl        ),    // 1: active
     .cmd_id_i                   (cmd_id_i               ),    // cmd ID
     .req_compl_i                (req_compl_i            ),    // from RX engine
     .req_compl_with_data_i      (req_compl_with_data_i  ),
-    .compl_done_o               (comp_done_o            ),
+    .to_rxe_compl_done_o        (to_rxe_compl_done_o    ),
 
     .rd_addr_i                  (rd_addr_i              ),
     .rd_be_i                    (rd_be_i                ),
@@ -92,15 +92,16 @@ INBOUND_FSM inbound_fsm_i (
     .us_cmd_fifo_wr_en_o        (us_cmd_fifo_wr_en    )
 );
 
-CMD_PROCESS_FSM cmd_process_fsm_i (
+CMD_PROCESS_FSM cmd_process_fsm_inst (
     .clk                        (clk                    ),    // input clk
     .rst_n                      (rst_n                  ),    // input rst
+    .up_wr_cmd_compl_o          (up_wr_cmd_compl        ),
     .us_cmd_fifo_rd_en_o        (us_cmd_fifo_rd_en      ),
     .us_cmd_fifo_dout_i         (us_cmd_fifo_dout       ),
     .us_cmd_fifo_empty          (us_cmd_fifo_empty      ),
     .req_compl_o                (req_compl_o            ), // to TX engine
     .req_compl_with_data_o      (req_compl_with_data_o  ),
-    .compl_done_i               (compl_done_i           ),
+    .txe_compl_done_i           (txe_compl_done_i           ),
     .req_tc_o                   (req_tc_o               ),
     .req_td_o                   (req_td_o               ),
     .req_ep_o                   (req_ep_o               ),
@@ -112,7 +113,7 @@ CMD_PROCESS_FSM cmd_process_fsm_i (
     .req_addr_o                 (req_addr_o             )
 );
 
-us_cmd_fifo us_cmd_fifo_i (
+us_cmd_fifo us_cmd_fifo_inst (
   .clk(clk), // input clk
   .rst(!rst_n), // input rst
   .din(us_cmd_fifo_din), // input [127 : 0] din
