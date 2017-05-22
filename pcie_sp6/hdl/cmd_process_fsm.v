@@ -24,6 +24,7 @@ module CMD_PROCESS_FSM(
 localparam STATE_IDLE = 2'b0;
 localparam STATE_ISSUE_TX_REQ = 2'b1;
 localparam STATE_WAIT_TX_CPLT = 2'b10;
+localparam STATE_WAIT_TX_UP_WR_DONE = 2'b11;
 reg [1:0] state;
 reg [1:0] state_next;
 
@@ -36,8 +37,8 @@ assign cmd_type = us_cmd_fifo_dout_i[63:62];
 always @(posedge clk) begin
     if (~rst_n) begin
         up_wr_cmd_compl_o <= 0;
-    end else if ((state == STATE_WAIT_TX_CPLT) && (state_next == STATE_IDLE)) begin
-        up_wr_cmd_compl_o <= 1;
+    end else if ((state == STATE_WAIT_TX_UP_WR_DONE) && (state_next == STATE_IDLE)) begin
+        up_wr_cmd_compl_o <= 0;
     end else begin
         up_wr_cmd_compl_o <= 0;
     end
@@ -85,7 +86,7 @@ end
 always @(*) begin
     case (state)
         STATE_IDLE        : state_next = (~us_cmd_fifo_empty) ? STATE_ISSUE_TX_REQ : state;
-        STATE_ISSUE_TX_REQ: state_next = STATE_WAIT_TX_CPLT;
+        STATE_ISSUE_TX_REQ: state_next = ((cmd_type == `US_CMD_CPL_TYPE) || (cmd_type == `US_CMD_CPLD_TYPE)) ? STATE_WAIT_TX_CPLT : ((cmd_type == `US_CMD_WR32_TYPE) ? STATE_WAIT_TX_UP_WR_DONE : 'bx);
         STATE_WAIT_TX_CPLT: state_next = (txe_compl_done_i) ? STATE_IDLE : state;
         default: state_next = 'bx;
     endcase

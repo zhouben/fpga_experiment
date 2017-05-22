@@ -634,7 +634,7 @@ begin
 
 
     $display("[%t] : Finished transmission of PCI-Express TLPs", $realtime);
-    $finish;
+    $finish(0);
 end
 
     else begin

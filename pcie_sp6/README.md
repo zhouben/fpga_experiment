@@ -7,4 +7,6 @@
  1. Write CMD register with two commands and then complet those, passed.
 1. TB for us\_cmd\_fifo
  1. simple test for write and read item to/from us\_cmd\_fifo
+1. TB for pcie
+ 1. write ADDR0 and read back using original PCIe modules.
 
