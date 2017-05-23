@@ -210,6 +210,12 @@ module PIO_EP (
     .rd_be_o(rd_be),                    // O [3:0]
     .rd_data_i(rd_data),                // I [31:0]
 
+    .up_wr_req_i              (),
+    .up_wr_host_mem_addr_i    (),    // in units of byte
+    .up_wr_local_mem_addr_o   (),   // in units of DWORD
+    .up_wr_data_i             (),
+    .up_wr_done_o             (),
+
     .completer_id_i(cfg_completer_id),  // I [15:0]
     .cfg_bus_mstr_enable_i(cfg_bus_mstr_enable) // I
     );

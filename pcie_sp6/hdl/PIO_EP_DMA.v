@@ -225,23 +225,29 @@ PIO_32_TX_ENGINE EP_TX (
    .tx_src_dsc( tx_src_dsc ),                  // O
 
     // Handshake with Rx engine
-    .req_compl_i          (to_txe_req_compl             ),            // I
+    .req_compl_i          (to_txe_req_compl             ), // I
     .req_compl_with_data_i(to_txe_req_compl_with_data   ), // I
-    .compl_done_o         (from_txe_compl_done      ),          // 0
-    .req_tc_i             (to_txe_req_tc                ),                  // I [2:0]
-    .req_td_i             (to_txe_req_td                ),                  // I
-    .req_ep_i             (to_txe_req_ep                ),                  // I
-    .req_attr_i           (to_txe_req_attr              ),              // I [1:0]
-    .req_len_i            (to_txe_req_len               ),                // I [9:0]
-    .req_rid_i            (to_txe_req_rid               ),                // I [15:0]
-    .req_tag_i            (to_txe_req_tag               ),                // I [7:0]
-    .req_be_i             (to_txe_req_be                ),                  // I [7:0]
-    .req_addr_i           (to_txe_req_addr              ),              // I [12:0]
+    .compl_done_o         (from_txe_compl_done          ), // 0
+    .req_tc_i             (to_txe_req_tc                ), // I [2:0]
+    .req_td_i             (to_txe_req_td                ), // I
+    .req_ep_i             (to_txe_req_ep                ), // I
+    .req_attr_i           (to_txe_req_attr              ), // I [1:0]
+    .req_len_i            (to_txe_req_len               ), // I [9:0]
+    .req_rid_i            (to_txe_req_rid               ), // I [15:0]
+    .req_tag_i            (to_txe_req_tag               ), // I [7:0]
+    .req_be_i             (to_txe_req_be                ), // I [7:0]
+    .req_addr_i           (to_txe_req_addr              ), // I [12:0]
 
     // Read Port
     .rd_addr_o(rd_addr),                // O [10:0]
     .rd_be_o(rd_be),                    // O [3:0]
     .rd_data_i(rd_data),                // I [31:0]
+
+    .up_wr_req_i              (),
+    .up_wr_host_mem_addr_i    (),    // in units of byte
+    .up_wr_local_mem_addr_o   (),   // in units of DWORD
+    .up_wr_data_i             (),
+    .up_wr_done_o             (),
 
     .completer_id_i(cfg_completer_id),  // I [15:0]
     .cfg_bus_mstr_enable_i(cfg_bus_mstr_enable) // I
