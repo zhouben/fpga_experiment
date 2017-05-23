@@ -61,7 +61,7 @@ module PIO_32_TX_ENGINE (
 
   // AXIS
   input                   s_axis_tx_tready,
-  output  reg [31:0]      s_axis_tx_tdata,
+  output      [31:0]      s_axis_tx_tdata,
   output  reg [3:0]       s_axis_tx_tkeep,
   output  reg             s_axis_tx_tlast,
   output  reg             s_axis_tx_tvalid,
@@ -85,6 +85,11 @@ module PIO_32_TX_ENGINE (
   output wire [3:0]       rd_be_o,
   input       [31:0]      rd_data_i,
 
+  input                   up_wr_req_i,
+  input       [31:0]      up_wr_host_mem_addr_i,    // in units of byte
+  output      [4:0]       up_wr_local_mem_addr_o,   // in units of DWORD
+  input       [31:0]      up_wr_data_i,
+
   input       [15:0]      completer_id_i,
   input                   cfg_bus_mstr_enable_i
   );
@@ -95,18 +100,24 @@ module PIO_32_TX_ENGINE (
   // TLP Header format/type values
   localparam PIO_32_CPLD_FMT_TYPE   = 7'b10_01010;
   localparam PIO_32_CPL_FMT_TYPE    = 7'b00_01010;
+  localparam PIO_32_WR32_FMT_TYPE   = 7'b10_00000;
 
   // State values
-  localparam PIO_32_TX_RST_STATE    = 3'd0;
-  localparam PIO_32_TX_CPL_CPLD_DW1 = 3'd1;
-  localparam PIO_32_TX_CPL_CPLD_DW2 = 3'd2;
-  localparam PIO_32_TX_CPLD_DW3     = 3'd3;
-  localparam PIO_32_TX_WAIT_STATE   = 3'd4;
+  localparam PIO_32_TX_RST_STATE    = 4'd0;
+  localparam PIO_32_TX_CPL_CPLD_DW1 = 4'd1;
+  localparam PIO_32_TX_CPL_CPLD_DW2 = 4'd2;
+  localparam PIO_32_TX_CPLD_DW3     = 4'd3;
+  localparam PIO_32_TX_WAIT_STATE   = 4'd4;
+  localparam PIO_32_TX_MWR_DW1      = 4'd5;
+  localparam PIO_32_TX_MWR_DW2      = 4'd6;
+  localparam PIO_32_TX_MWR_ADDR     = 4'd7;
+  localparam PIO_32_TX_MWR_DATA     = 4'd8;
 
   // Local registers
   reg [11:0]          byte_count;
   reg [6:0]           lower_addr;
-  reg [2:0]           state;
+  reg [3:0]           state;
+  reg [3:0]           state_next;
   reg                 cpl_w_data;
   reg                 req_compl_q;
   reg                 req_compl_with_data_q;
@@ -168,144 +179,351 @@ module PIO_32_TX_ENGINE (
     end
   end
 
-  //
-  //  Generate Completion with 1 DW Payload or Completion with
-  //  no data
-  //
-  always @(posedge clk) begin
+reg [4:0]   up_wr_count;
+reg [4:0]   up_wr_count_next;
+reg [31:0]  s_axis_tx_tdata_q;
+
+assign s_axis_tx_tdata = (state == PIO_32_TX_MWR_DATA) ? up_wr_data_i : s_axis_tx_tdata_q;
+assign up_wr_local_mem_addr_o = up_wr_count_next;
+
+/**** 3-blocks ***/
+always @(posedge clk) begin
     if (!rst_n) begin
-
-      s_axis_tx_tlast   <= #TCQ 1'b0;
-      s_axis_tx_tvalid  <= #TCQ 1'b0;
-      s_axis_tx_tdata   <= #TCQ 32'h0;
-      s_axis_tx_tkeep   <= #TCQ 4'hF;
-
-      compl_done_o      <= #TCQ 1'b0;
-
-      state             <= #TCQ PIO_32_TX_RST_STATE;
+        state <= PIO_32_TX_RST_STATE;
     end else begin
-      compl_done_o      <= #TCQ 1'b0;
+        state <= state_next;
+    end
+end
 
-      case (state)
-        PIO_32_TX_RST_STATE : begin
-
-          if (req_compl_q && req_compl_with_data_q) begin
-            // Begin a CplD TLP
-            s_axis_tx_tlast  <= #TCQ 1'b0;
-            s_axis_tx_tvalid <= #TCQ 1'b1;
-            s_axis_tx_tdata  <= #TCQ {1'b0,
-                                      PIO_32_CPLD_FMT_TYPE,
-                                      {1'b0},
-                                      req_tc_i,
-                                      {4'b0},
-                                      req_td_i,
-                                      req_ep_i,
-                                      req_attr_i,
-                                      {2'b0},
-                                      req_len_i
-                                      };
-            cpl_w_data       <= #TCQ req_compl_with_data_q;
-            state            <= #TCQ PIO_32_TX_CPL_CPLD_DW1;
-          end else if (req_compl_q && !req_compl_with_data_q) begin
-            // Begin a Cpl TLP
-            s_axis_tx_tlast  <= #TCQ 1'b0;
-            s_axis_tx_tvalid <= #TCQ 1'b1;
-            s_axis_tx_tdata  <= #TCQ {1'b0,
-                                      PIO_32_CPL_FMT_TYPE,
-                                      {1'b0},
-                                      req_tc_i,
-                                      {4'b0},
-                                      req_td_i,
-                                      req_ep_i,
-                                      req_attr_i,
-                                      {2'b0},
-                                      req_len_i
-                                      };
-            cpl_w_data       <= #TCQ req_compl_with_data_q;
-            state            <= #TCQ PIO_32_TX_CPL_CPLD_DW1;
-          end else begin
-            s_axis_tx_tlast   <= #TCQ 1'b0;
-            s_axis_tx_tvalid  <= #TCQ 1'b0;
-            s_axis_tx_tdata   <= #TCQ 32'h0;
-            s_axis_tx_tkeep   <= #TCQ 4'hF;
-            state             <= #TCQ PIO_32_TX_RST_STATE;
-          end
-        end // PIO_32_TX_RST_STATE
-
-        PIO_32_TX_CPL_CPLD_DW1 : begin
-          if (s_axis_tx_tready) begin
-            // Output next DW of TLP
-            s_axis_tx_tlast  <= #TCQ 1'b0;
-            s_axis_tx_tvalid <= #TCQ 1'b1;
-            s_axis_tx_tdata  <= #TCQ {completer_id_i,
-                                      {3'b0},
-                                      {1'b0},
-                                      byte_count
-                                      };
-            state            <= #TCQ PIO_32_TX_CPL_CPLD_DW2;
-          end else begin
-            // Wait for core to accept previous DW
-            state            <= #TCQ PIO_32_TX_CPL_CPLD_DW1;
-          end
-        end // PIO_32_TX_CPL_CPLD_DW1
-
-        PIO_32_TX_CPL_CPLD_DW2 : begin
-          if (s_axis_tx_tready) begin
-            // Output next DW of TLP
-            s_axis_tx_tlast  <= #TCQ 1'b0;
-            s_axis_tx_tvalid <= #TCQ 1'b1;
-            s_axis_tx_tdata  <= #TCQ {req_rid_i,
-                                      req_tag_i,
-                                      {1'b0},
-                                      lower_addr
-                                      };
-
-            if (cpl_w_data) begin
-              // For a CplD, there is one more DW
-              s_axis_tx_tlast <= #TCQ 1'b0;
-              state           <= #TCQ PIO_32_TX_CPLD_DW3;
-            end else begin
-              // For a Cpl, this is the final DW
-              s_axis_tx_tlast <= #TCQ 1'b1;
-              state           <= #TCQ PIO_32_TX_WAIT_STATE;
+// output
+always @(posedge clk) begin
+    if (!rst_n) begin
+        s_axis_tx_tlast   <= #TCQ 1'b0;
+        s_axis_tx_tvalid  <= #TCQ 1'b0;
+        s_axis_tx_tdata_q <= #TCQ 32'h0;
+        s_axis_tx_tkeep   <= #TCQ 4'hF;
+        compl_done_o      <= #TCQ 1'b0;
+        cpl_w_data        <= #TCQ 1'b0;
+        up_wr_count       <= #TCQ 'b0;
+    end else begin
+        s_axis_tx_tlast   <= #TCQ s_axis_tx_tlast ;
+        s_axis_tx_tvalid  <= #TCQ s_axis_tx_tvalid;
+        s_axis_tx_tdata_q <= #TCQ s_axis_tx_tdata_q;
+        s_axis_tx_tkeep   <= #TCQ s_axis_tx_tkeep ;
+        compl_done_o      <= #TCQ compl_done_o;
+        case (state_next)
+            PIO_32_TX_RST_STATE: begin
+                s_axis_tx_tlast   <= #TCQ 1'b0;
+                s_axis_tx_tvalid  <= #TCQ 1'b0;
+                s_axis_tx_tdata_q <= #TCQ 32'h0;
+                s_axis_tx_tkeep   <= #TCQ 4'hF;
+                compl_done_o      <= #TCQ ((state == PIO_32_TX_WAIT_STATE) || (state == PIO_32_TX_MWR_DATA)) ? 1'b1 : 1'b0;
             end
-          end else begin
-            // Wait for core to accept previous DW
-            state            <= #TCQ PIO_32_TX_CPL_CPLD_DW2;
-          end
-        end // PIO_32_TX_CPL_CPLD_DW2
+            PIO_32_TX_CPL_CPLD_DW1: begin
+                if (state == PIO_32_TX_RST_STATE) begin
+                    s_axis_tx_tlast  <= #TCQ 1'b0;
+                    s_axis_tx_tvalid <= #TCQ 1'b1;
+                    s_axis_tx_tdata_q<= #TCQ {1'b0,
+                        (req_compl_with_data_q ? PIO_32_CPLD_FMT_TYPE : PIO_32_CPL_FMT_TYPE),
+                        {1'b0},
+                        req_tc_i,
+                        {4'b0},
+                        req_td_i,
+                        req_ep_i,
+                        req_attr_i,
+                        {2'b0},
+                        req_len_i
+                    };
+                    cpl_w_data       <= #TCQ req_compl_with_data_q;
+                end
+            end
+            PIO_32_TX_CPL_CPLD_DW2: begin
+                if (state == PIO_32_TX_CPL_CPLD_DW1) begin
+                    s_axis_tx_tlast  <= #TCQ 1'b0;
+                    s_axis_tx_tvalid <= #TCQ 1'b1;
+                    s_axis_tx_tdata_q<= #TCQ {completer_id_i,
+                        {3'b0},
+                        {1'b0},
+                        byte_count
+                    };
+                end
+            end
+            PIO_32_TX_CPLD_DW3    : begin
+                if (state == PIO_32_TX_CPL_CPLD_DW2) begin
+                    s_axis_tx_tlast  <= #TCQ 1'b0;
+                    s_axis_tx_tvalid <= #TCQ 1'b1;
+                    s_axis_tx_tdata_q<= #TCQ {req_rid_i,
+                        req_tag_i,
+                        {1'b0},
+                        lower_addr
+                    };
+                    s_axis_tx_tlast <= #TCQ 1'b0;
+                end
+            end
+            PIO_32_TX_WAIT_STATE  : begin
+                case (state)
+                    PIO_32_TX_CPL_CPLD_DW2: begin
+                        s_axis_tx_tlast  <= #TCQ 1'b1;
+                        s_axis_tx_tvalid <= #TCQ 1'b1;
+                        s_axis_tx_tdata_q<= #TCQ {req_rid_i,
+                            req_tag_i,
+                            {1'b0},
+                            lower_addr
+                        };
+                    end
+                    PIO_32_TX_CPLD_DW3: begin
+                        s_axis_tx_tlast  <= #TCQ 1'b1;
+                        s_axis_tx_tvalid <= #TCQ 1'b1;
+                        s_axis_tx_tdata_q<= #TCQ rd_data_i;
+                    end
+                endcase
+            end
+            PIO_32_TX_MWR_DW1 : begin
+                if (state == PIO_32_TX_RST_STATE) begin
+                    s_axis_tx_tlast  <= #TCQ 1'b0;
+                    s_axis_tx_tvalid <= #TCQ 1'b1;
+                    s_axis_tx_tdata_q<= #TCQ {1'b0,
+                        PIO_32_WR32_FMT_TYPE,
+                        {1'b0},
+                        req_tc_i,
+                        {4'b0},
+                        req_td_i,
+                        req_ep_i,
+                        req_attr_i,
+                        {2'b0},
+                        10'd32
+                    };
+                end
+            end
+            PIO_32_TX_MWR_DW2 : begin
+                if (state == PIO_32_TX_MWR_DW1) begin
+                    s_axis_tx_tlast  <= #TCQ 1'b0;
+                    s_axis_tx_tvalid <= #TCQ 1'b1;
+                    s_axis_tx_tdata_q<= #TCQ {completer_id_i, 8'b0, 8'hFF }; // RequestID, Tag, Last/First BE
+                end
+            end
+            PIO_32_TX_MWR_ADDR : begin
+                if (state == PIO_32_TX_MWR_DW2) begin
+                    s_axis_tx_tlast  <= #TCQ 1'b0;
+                    s_axis_tx_tvalid <= #TCQ 1'b1;
+                    s_axis_tx_tdata_q<= #TCQ {up_wr_host_mem_addr_i[31:2], 2'b0};
+                end
+            end
+            PIO_32_TX_MWR_DATA : begin
+                s_axis_tx_tlast  <= #TCQ (up_wr_count_next == 'd31) ? 1'b1 : 1'b0;
+                s_axis_tx_tvalid <= #TCQ 1'b1;
+                up_wr_count      <= up_wr_count_next;
+            end
+        endcase
+    end
+end
 
+always @(*) begin
+    case (state)
+        PIO_32_TX_MWR_DATA: begin
+            if (s_axis_tx_tready) begin
+                up_wr_count_next = up_wr_count + 1;
+            end else begin
+                up_wr_count_next = up_wr_count;
+            end
+        end
+        default : up_wr_count_next = 0;
+    endcase
+end
+
+// state transaction
+always @(*) begin
+    state_next = #TCQ state;
+    case (state)
+        PIO_32_TX_RST_STATE : begin
+            if (req_compl_q) begin
+                state_next  = #TCQ PIO_32_TX_CPL_CPLD_DW1;
+            end else if (up_wr_req_i) begin
+                state_next = #TCQ PIO_32_TX_MWR_DW1;
+            end
+        end
+        PIO_32_TX_CPL_CPLD_DW1 : begin
+            if (s_axis_tx_tready) begin
+                state_next = #TCQ PIO_32_TX_CPL_CPLD_DW2;
+            end
+        end
+        PIO_32_TX_CPL_CPLD_DW2 : begin
+            if (s_axis_tx_tready) begin
+                if (cpl_w_data) begin
+                    state_next  = #TCQ PIO_32_TX_CPLD_DW3;
+                end else
+                    state_next  = #TCQ PIO_32_TX_WAIT_STATE;
+            end
+        end
         PIO_32_TX_CPLD_DW3 : begin
-          if (s_axis_tx_tready) begin
-            // Output next DW of TLP
-            s_axis_tx_tlast  <= #TCQ 1'b1;
-            s_axis_tx_tvalid <= #TCQ 1'b1;
-            s_axis_tx_tdata  <= #TCQ rd_data_i;
-            state            <= #TCQ PIO_32_TX_WAIT_STATE;
-          end else begin
-            // Wait for core to accept previous DW
-            state            <= #TCQ PIO_32_TX_CPLD_DW3;
-          end
-        end // PIO_32_TX_CPLD_DW3
-
+            if (s_axis_tx_tready) begin
+                state_next  = #TCQ PIO_32_TX_WAIT_STATE;
+            end
+        end
         PIO_32_TX_WAIT_STATE : begin
-          if (s_axis_tx_tready) begin
-            // Core has accepted final DW of TLP
-            s_axis_tx_tlast  <= #TCQ 1'b0;
-            s_axis_tx_tvalid <= #TCQ 1'b0;
-            compl_done_o     <= #TCQ 1'b1;
-            s_axis_tx_tdata  <= #TCQ 32'h0;
-            state            <= #TCQ PIO_32_TX_RST_STATE;
+            if (s_axis_tx_tready) begin
+                state_next = #TCQ PIO_32_TX_RST_STATE;
+            end
+        end
+        PIO_32_TX_MWR_DW1 : begin
+            if (s_axis_tx_tready) begin
+                state_next  = #TCQ PIO_32_TX_MWR_DW2;
+            end
+        end
+        PIO_32_TX_MWR_DW2 : begin
+            if (s_axis_tx_tready) begin
+                state_next  = #TCQ PIO_32_TX_MWR_ADDR;
+            end
+        end
+        PIO_32_TX_MWR_ADDR : begin
+            if (s_axis_tx_tready) begin
+                state_next  = #TCQ PIO_32_TX_MWR_DATA;
+            end
+        end
+        PIO_32_TX_MWR_DATA : begin
+            if (s_axis_tx_tready) begin
+                if (up_wr_count == 'd31) begin
+                    state_next  = #TCQ PIO_32_TX_RST_STATE;
+                end
+            end
+        end
+    endcase
+end
+
+//
+//  Generate Completion with 1 DW Payload or Completion with
+//  no data
+//
+`ifdef OLD_SINGLE_FSM
+always @(posedge clk) begin
+  if (!rst_n) begin
+
+
+    state             <= #TCQ PIO_32_TX_RST_STATE;
+  end else begin
+    compl_done_o      <= #TCQ 1'b0;
+
+    case (state)
+      PIO_32_TX_RST_STATE : begin
+
+        if (req_compl_q && req_compl_with_data_q) begin
+          // Begin a CplD TLP
+          s_axis_tx_tlast  <= #TCQ 1'b0;
+          s_axis_tx_tvalid <= #TCQ 1'b1;
+          s_axis_tx_tdata  <= #TCQ {1'b0,
+                                    PIO_32_CPLD_FMT_TYPE,
+                                    {1'b0},
+                                    req_tc_i,
+                                    {4'b0},
+                                    req_td_i,
+                                    req_ep_i,
+                                    req_attr_i,
+                                    {2'b0},
+                                    req_len_i
+                                    };
+          cpl_w_data       <= #TCQ req_compl_with_data_q;
+          state            <= #TCQ PIO_32_TX_CPL_CPLD_DW1;
+        end else if (req_compl_q && !req_compl_with_data_q) begin
+          // Begin a Cpl TLP
+          s_axis_tx_tlast  <= #TCQ 1'b0;
+          s_axis_tx_tvalid <= #TCQ 1'b1;
+          s_axis_tx_tdata  <= #TCQ {1'b0,
+                                    PIO_32_CPL_FMT_TYPE,
+                                    {1'b0},
+                                    req_tc_i,
+                                    {4'b0},
+                                    req_td_i,
+                                    req_ep_i,
+                                    req_attr_i,
+                                    {2'b0},
+                                    req_len_i
+                                    };
+          cpl_w_data       <= #TCQ req_compl_with_data_q;
+          state            <= #TCQ PIO_32_TX_CPL_CPLD_DW1;
+        end else begin
+          s_axis_tx_tlast   <= #TCQ 1'b0;
+          s_axis_tx_tvalid  <= #TCQ 1'b0;
+          s_axis_tx_tdata   <= #TCQ 32'h0;
+          s_axis_tx_tkeep   <= #TCQ 4'hF;
+          state             <= #TCQ PIO_32_TX_RST_STATE;
+        end
+      end // PIO_32_TX_RST_STATE
+
+      PIO_32_TX_CPL_CPLD_DW1 : begin
+        if (s_axis_tx_tready) begin
+          // Output next DW of TLP
+          s_axis_tx_tlast  <= #TCQ 1'b0;
+          s_axis_tx_tvalid <= #TCQ 1'b1;
+          s_axis_tx_tdata  <= #TCQ {completer_id_i,
+                                    {3'b0},
+                                    {1'b0},
+                                    byte_count
+                                    };
+          state            <= #TCQ PIO_32_TX_CPL_CPLD_DW2;
+        end else begin
+          // Wait for core to accept previous DW
+          state            <= #TCQ PIO_32_TX_CPL_CPLD_DW1;
+        end
+      end // PIO_32_TX_CPL_CPLD_DW1
+
+      PIO_32_TX_CPL_CPLD_DW2 : begin
+        if (s_axis_tx_tready) begin
+          // Output next DW of TLP
+          s_axis_tx_tlast  <= #TCQ 1'b0;
+          s_axis_tx_tvalid <= #TCQ 1'b1;
+          s_axis_tx_tdata  <= #TCQ {req_rid_i,
+                                    req_tag_i,
+                                    {1'b0},
+                                    lower_addr
+                                    };
+
+          if (cpl_w_data) begin
+            // For a CplD, there is one more DW
+            s_axis_tx_tlast <= #TCQ 1'b0;
+            state           <= #TCQ PIO_32_TX_CPLD_DW3;
           end else begin
-            // Wait for core to accept previous DW
-            state            <= #TCQ PIO_32_TX_WAIT_STATE;
+            // For a Cpl, this is the final DW
+            s_axis_tx_tlast <= #TCQ 1'b1;
+            state           <= #TCQ PIO_32_TX_WAIT_STATE;
           end
-        end // PIO_32_TX_WAIT_STATE
-        default:
-          state              <= #TCQ PIO_32_TX_RST_STATE;
-      endcase // (state)
-    end // rst_n
-  end
+        end else begin
+          // Wait for core to accept previous DW
+          state            <= #TCQ PIO_32_TX_CPL_CPLD_DW2;
+        end
+      end // PIO_32_TX_CPL_CPLD_DW2
+
+      PIO_32_TX_CPLD_DW3 : begin
+        if (s_axis_tx_tready) begin
+          // Output next DW of TLP
+          s_axis_tx_tlast  <= #TCQ 1'b1;
+          s_axis_tx_tvalid <= #TCQ 1'b1;
+          s_axis_tx_tdata  <= #TCQ rd_data_i;
+          state            <= #TCQ PIO_32_TX_WAIT_STATE;
+        end else begin
+          // Wait for core to accept previous DW
+          state            <= #TCQ PIO_32_TX_CPLD_DW3;
+        end
+      end // PIO_32_TX_CPLD_DW3
+
+      PIO_32_TX_WAIT_STATE : begin
+        if (s_axis_tx_tready) begin
+          // Core has accepted final DW of TLP
+          s_axis_tx_tlast  <= #TCQ 1'b0;
+          s_axis_tx_tvalid <= #TCQ 1'b0;
+          compl_done_o     <= #TCQ 1'b1;
+          s_axis_tx_tdata  <= #TCQ 32'h0;
+          state            <= #TCQ PIO_32_TX_RST_STATE;
+        end else begin
+          // Wait for core to accept previous DW
+          state            <= #TCQ PIO_32_TX_WAIT_STATE;
+        end
+      end // PIO_32_TX_WAIT_STATE
+      default:
+        state              <= #TCQ PIO_32_TX_RST_STATE;
+    endcase // (state)
+  end // rst_n
+end
+`endif
 
 endmodule // PIO_32_TX_ENGINE
 

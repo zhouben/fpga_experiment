@@ -24,6 +24,9 @@ module MY_EP_MEM_CTRL (
     output                req_compl_o, // to TX engine
     output                req_compl_with_data_o,
     input                 txe_compl_done_i,
+    output                up_wr_req_o,
+    output   [31:0]       up_wr_host_mem_addr_o,
+    output   [4:0]        up_wr_local_mem_addr_o,
     output  [2:0]         req_tc_o,
     output                req_td_o,
     output                req_ep_o,
@@ -101,7 +104,10 @@ CMD_PROCESS_FSM cmd_process_fsm_inst (
     .us_cmd_fifo_empty          (us_cmd_fifo_empty      ),
     .req_compl_o                (req_compl_o            ), // to TX engine
     .req_compl_with_data_o      (req_compl_with_data_o  ),
-    .txe_compl_done_i           (txe_compl_done_i           ),
+    .txe_compl_done_i           (txe_compl_done_i       ),
+    .up_wr_req_o                (up_wr_req_o            ),
+    .up_wr_host_mem_addr_o      (up_wr_host_mem_addr_o  ),
+    .up_wr_local_mem_addr_o     (up_wr_local_mem_addr_o ),
     .req_tc_o                   (req_tc_o               ),
     .req_td_o                   (req_td_o               ),
     .req_ep_o                   (req_ep_o               ),

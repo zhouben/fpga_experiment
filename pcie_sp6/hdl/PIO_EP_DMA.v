@@ -116,6 +116,7 @@ wire  [12:0]      from_rxe_req_addr;
 wire              to_txe_req_compl;
 wire              to_txe_req_compl_with_data;
 wire              from_txe_compl_done;
+wire              up_wr_req;
 wire  [2:0]       to_txe_req_tc;
 wire              to_txe_req_td;
 wire              to_txe_req_ep;
@@ -125,6 +126,10 @@ wire  [15:0]      to_txe_req_rid;
 wire  [7:0]       to_txe_req_tag;
 wire  [7:0]       to_txe_req_be;
 wire  [12:0]      to_txe_req_addr;
+
+wire  [31:0]      up_wr_host_mem_addr;
+wire  [9:0]       up_wr_local_mem_addr;
+wire  [31:0]      up_wr_data;
 
 //
 // ENDPOINT MEMORY : 8KB memory aperture implemented in FPGA BlockRAM(*)
@@ -152,6 +157,9 @@ MY_EP_MEM_CTRL EP_MEM (
     .req_compl_o          	(	to_txe_req_compl            	),
     .req_compl_with_data_o	(	to_txe_req_compl_with_data  	),
     .txe_compl_done_i     	(	from_txe_compl_done       	),
+    .up_wr_req_o            (	up_wr_req                   ),
+    .up_wr_host_mem_addr_o  (	up_wr_host_mem_addr         ),
+    .up_wr_local_mem_addr_o (	up_wr_local_mem_addr[9:5]   ),
     .req_tc_o             	(	to_txe_req_tc               	),
     .req_td_o             	(	to_txe_req_td               	),
     .req_ep_o             	(	to_txe_req_ep               	),
@@ -225,26 +233,40 @@ PIO_32_TX_ENGINE EP_TX (
    .tx_src_dsc( tx_src_dsc ),                  // O
 
     // Handshake with Rx engine
-    .req_compl_i          (to_txe_req_compl             ),            // I
+    .req_compl_i          (to_txe_req_compl             ), // I
     .req_compl_with_data_i(to_txe_req_compl_with_data   ), // I
-    .compl_done_o         (from_txe_compl_done      ),          // 0
-    .req_tc_i             (to_txe_req_tc                ),                  // I [2:0]
-    .req_td_i             (to_txe_req_td                ),                  // I
-    .req_ep_i             (to_txe_req_ep                ),                  // I
-    .req_attr_i           (to_txe_req_attr              ),              // I [1:0]
-    .req_len_i            (to_txe_req_len               ),                // I [9:0]
-    .req_rid_i            (to_txe_req_rid               ),                // I [15:0]
-    .req_tag_i            (to_txe_req_tag               ),                // I [7:0]
-    .req_be_i             (to_txe_req_be                ),                  // I [7:0]
-    .req_addr_i           (to_txe_req_addr              ),              // I [12:0]
+    .compl_done_o         (from_txe_compl_done          ), // 0
+    .req_tc_i             (to_txe_req_tc                ), // I [2:0]
+    .req_td_i             (to_txe_req_td                ), // I
+    .req_ep_i             (to_txe_req_ep                ), // I
+    .req_attr_i           (to_txe_req_attr              ), // I [1:0]
+    .req_len_i            (to_txe_req_len               ), // I [9:0]
+    .req_rid_i            (to_txe_req_rid               ), // I [15:0]
+    .req_tag_i            (to_txe_req_tag               ), // I [7:0]
+    .req_be_i             (to_txe_req_be                ), // I [7:0]
+    .req_addr_i           (to_txe_req_addr              ), // I [12:0]
 
     // Read Port
     .rd_addr_o(rd_addr),                // O [10:0]
     .rd_be_o(rd_be),                    // O [3:0]
     .rd_data_i(rd_data),                // I [31:0]
 
+    .up_wr_req_i              (up_wr_req                ),
+    .up_wr_host_mem_addr_i    (up_wr_host_mem_addr      ),    // in units of byte
+    .up_wr_local_mem_addr_o   (up_wr_local_mem_addr[4:0]),   // in units of DWORD
+    .up_wr_data_i             (up_wr_data               ),
+
     .completer_id_i(cfg_completer_id),  // I [15:0]
     .cfg_bus_mstr_enable_i(cfg_bus_mstr_enable) // I
+);
+
+LOCAL_MEM    LOCAL_MEMEx01
+(
+    .clk     (clk                   ),
+    .we      (                      ),
+    .addr    (up_wr_local_mem_addr  ),
+    .din     (                      ),
+    .dout    (up_wr_data            )
 );
 
 assign req_compl_o  = from_rxe_req_compl;

@@ -38,6 +38,7 @@ sys_clk_gen.v
 ../../source/gtpa1_dual_wrapper_tile.v
 ../../source/gtpa1_dual_wrapper.v
 ../../../../hdl/xilinx_pcie_1_1_ep_s6.v
+../../../../hdl/local_mem_dummy.v
 ../../../../hdl/MY_EP_MEM_CTRL.v
 ../../../../hdl/cmd_process_fsm.v
 ../../../../hdl/inbound_fsm.v
