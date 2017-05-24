@@ -253,6 +253,15 @@ PIO_32_TX_ENGINE EP_TX (
     .cfg_bus_mstr_enable_i(cfg_bus_mstr_enable) // I
 );
 
+LOCAL_MEM    LOCAL_MEMEx01
+(
+    .clk     (clk                   ),
+    .we      (                      ),
+    .addr    (up_wr_local_mem_addr_o),
+    .din     (                      ),
+    .dout    (up_wr_data_i          )
+);
+
 assign req_compl_o  = from_rxe_req_compl;
 assign compl_done_o = to_rxe_compl_done;
 endmodule // PIO_EP

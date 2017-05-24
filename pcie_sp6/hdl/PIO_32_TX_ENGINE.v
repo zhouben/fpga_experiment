@@ -185,6 +185,7 @@ reg [4:0]   up_wr_count_next;
 reg [31:0]  s_axis_tx_tdata_q;
 
 assign s_axis_tx_tdata = (state == PIO_32_TX_MWR_DATA) ? up_wr_data_i : s_axis_tx_tdata_q;
+assign up_wr_local_mem_addr_o = up_wr_count_next;
 
 /**** 3-blocks ***/
 always @(posedge clk) begin
