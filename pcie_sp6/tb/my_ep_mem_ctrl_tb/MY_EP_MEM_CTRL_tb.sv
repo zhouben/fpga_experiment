@@ -154,7 +154,7 @@ task tsk_rd_register;
         fork
             begin
                 repeat (10) @(posedge clk);
-                if (MY_EP_MEM_CTRLEx01.cmd_process_fsm_inst.state != MY_EP_MEM_CTRLEx01.cmd_process_fsm_inst.STATE_WAIT_TX_CPLT)
+                if (MY_EP_MEM_CTRLEx01.cmd_process_fsm_inst.state != MY_EP_MEM_CTRLEx01.cmd_process_fsm_inst.STATE_WAIT_TX_CPL_DONE)
                     $display("[%8t] cmd_process_fsm should wait for TX CPL, but %2d\n", $realtime, MY_EP_MEM_CTRLEx01.cmd_process_fsm_inst.state);
                 txe_compl_done_i = 1; @(posedge clk);
                 txe_compl_done_i = 0; @(posedge clk);

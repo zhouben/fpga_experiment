@@ -89,7 +89,6 @@ module PIO_32_TX_ENGINE (
   input       [31:0]      up_wr_host_mem_addr_i,    // in units of byte
   output      [4:0]       up_wr_local_mem_addr_o,   // in units of DWORD
   input       [31:0]      up_wr_data_i,
-  output                  up_wr_done_o,
 
   input       [15:0]      completer_id_i,
   input                   cfg_bus_mstr_enable_i
@@ -101,7 +100,7 @@ module PIO_32_TX_ENGINE (
   // TLP Header format/type values
   localparam PIO_32_CPLD_FMT_TYPE   = 7'b10_01010;
   localparam PIO_32_CPL_FMT_TYPE    = 7'b00_01010;
-  localparam PIO_32_WR32_FMT_TYPE   = 7'b10_01010;
+  localparam PIO_32_WR32_FMT_TYPE   = 7'b10_00000;
 
   // State values
   localparam PIO_32_TX_RST_STATE    = 4'd0;
@@ -117,8 +116,8 @@ module PIO_32_TX_ENGINE (
   // Local registers
   reg [11:0]          byte_count;
   reg [6:0]           lower_addr;
-  reg [2:0]           state;
-  reg [2:0]           state_next;
+  reg [3:0]           state;
+  reg [3:0]           state_next;
   reg                 cpl_w_data;
   reg                 req_compl_q;
   reg                 req_compl_with_data_q;
@@ -214,7 +213,7 @@ always @(posedge clk) begin
         compl_done_o      <= #TCQ compl_done_o;
         case (state_next)
             PIO_32_TX_RST_STATE: begin
-                s_axis_tx_tlast   <= #TCQ (state == PIO_32_TX_MWR_DATA) ? 1'b1 : 1'b0;
+                s_axis_tx_tlast   <= #TCQ 1'b0;
                 s_axis_tx_tvalid  <= #TCQ 1'b0;
                 s_axis_tx_tdata_q <= #TCQ 32'h0;
                 s_axis_tx_tkeep   <= #TCQ 4'hF;
@@ -300,7 +299,7 @@ always @(posedge clk) begin
                 if (state == PIO_32_TX_MWR_DW1) begin
                     s_axis_tx_tlast  <= #TCQ 1'b0;
                     s_axis_tx_tvalid <= #TCQ 1'b1;
-                    s_axis_tx_tdata_q<= #TCQ {req_rid_i, 8'b0, 8'hFF }; // RequestID, Tag, Last/First BE
+                    s_axis_tx_tdata_q<= #TCQ {completer_id_i, 8'b0, 8'hFF }; // RequestID, Tag, Last/First BE
                 end
             end
             PIO_32_TX_MWR_ADDR : begin
@@ -311,7 +310,7 @@ always @(posedge clk) begin
                 end
             end
             PIO_32_TX_MWR_DATA : begin
-                s_axis_tx_tlast  <= #TCQ 1'b0;
+                s_axis_tx_tlast  <= #TCQ (up_wr_count_next == 'd31) ? 1'b1 : 1'b0;
                 s_axis_tx_tvalid <= #TCQ 1'b1;
                 up_wr_count      <= up_wr_count_next;
             end
@@ -323,11 +322,12 @@ always @(*) begin
     case (state)
         PIO_32_TX_MWR_DATA: begin
             if (s_axis_tx_tready) begin
-                up_wr_count_next <= up_wr_count + 1;
+                up_wr_count_next = up_wr_count + 1;
             end else begin
-                up_wr_count_next <= up_wr_count;
+                up_wr_count_next = up_wr_count;
             end
         end
+        default : up_wr_count_next = 0;
     endcase
 end
 
@@ -383,7 +383,7 @@ always @(*) begin
         PIO_32_TX_MWR_DATA : begin
             if (s_axis_tx_tready) begin
                 if (up_wr_count == 'd31) begin
-                    state_next  = #TCQ PIO_32_TX_MWR_DATA;
+                    state_next  = #TCQ PIO_32_TX_RST_STATE;
                 end
             end
         end

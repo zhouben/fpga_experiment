@@ -6,6 +6,7 @@ import shutil
 
 def main():
     test_case_array = [
+        {"name" : "LOCAL_MEM_tb"  ,       "description" : "test bench for LOCAL_MEM",            "path" : './local_mem_tb/',       "script" : 'LOCAL_MEM_tb_sv.do' },
         {"name" : "inbound_fsm_tb",       "description" : "test bench for inbound moudle",       "path" : './inbound_tb/',         "script" : 'inbound_fsm_tb.do' },
         {"name" : "us_cmd_fifo_tb",       "description" : "test bench for upstream cmd fifo",    "path" : './us_cmd_fifo_tb/',         "script" : 'us_cmd_fifo_tb_sv.do' },
         {"name" : "my_ep_mem_ctrl_tb",    "description" : "test bench for my_ep_mem_ctrl",       "path" : './my_ep_mem_ctrl_tb/',         "script" : 'MY_EP_MEM_CTRL_tb_sv.do' },
@@ -51,6 +52,8 @@ def main():
             if "PASSED" in str.upper():
                 test_passed = True
             if "FAILED" in str.upper():
+                test_failed = True
+            if "Error loading design" in str:
                 test_failed = True
         str = p.stdout.read()
         print str,
