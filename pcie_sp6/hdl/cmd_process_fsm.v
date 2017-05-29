@@ -10,7 +10,7 @@ module CMD_PROCESS_FSM(
     output              req_compl_o                , // to TX engine
     output              req_compl_with_data_o      ,
     input               txe_compl_done_i           ,
-    output              up_wr_req_o                ,
+    output              up_wr_req_o                ,    // TODO, reg output is better.
     output reg [31:0]   up_wr_host_mem_addr_o      ,
     output     [4:0]    up_wr_local_mem_addr_o     , // high bits local memory addr [9~5]
     output reg [2:0]    req_tc_o                   ,

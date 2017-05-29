@@ -155,7 +155,7 @@ always @(*) begin
         end
         3'b101: begin
             case (cmd_id_i)
-                2'd0: state_next = {state[1], 1'b1};
+                2'd0: state_next = {state[1], 1'b0};
                 2'd1: state_next = {1'b0, state[0]};
                 default: state_next = state;
             endcase

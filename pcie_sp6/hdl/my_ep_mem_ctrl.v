@@ -66,7 +66,7 @@ INBOUND_FSM inbound_fsm_inst (
     .clk                        (clk                    ),    // input clk
     .rst_n                      (rst_n                  ),    // input rst
     .up_wr_cmd_compl_i          (up_wr_cmd_compl        ),    // 1: active
-    .cmd_id_i                   (cmd_id_i               ),    // cmd ID
+    .cmd_id_i                   ('b0               ),    // cmd ID
     .req_compl_i                (req_compl_i            ),    // from RX engine
     .req_compl_with_data_i      (req_compl_with_data_i  ),
     .to_rxe_compl_done_o        (to_rxe_compl_done_o    ),

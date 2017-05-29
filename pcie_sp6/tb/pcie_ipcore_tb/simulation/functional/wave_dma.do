@@ -45,6 +45,8 @@ add wave -noupdate -radix hexadecimal /board/EP/app/PIO/PIO_EP/EP_MEM/inbound_fs
 add wave -noupdate -radix hexadecimal /board/EP/app/PIO/PIO_EP/EP_MEM/inbound_fsm_inst/addr_1
 add wave -noupdate /board/EP/app/PIO/PIO_EP/EP_MEM/inbound_fsm_inst/clk
 add wave -noupdate /board/EP/app/PIO/PIO_EP/EP_MEM/inbound_fsm_inst/cmd
+add wave -noupdate /board/EP/app/PIO/PIO_EP/EP_MEM/inbound_fsm_inst/state
+add wave -noupdate /board/EP/app/PIO/PIO_EP/EP_MEM/inbound_fsm_inst/state_next
 add wave -noupdate /board/EP/app/PIO/PIO_EP/EP_MEM/inbound_fsm_inst/cmd_id
 add wave -noupdate /board/EP/app/PIO/PIO_EP/EP_MEM/inbound_fsm_inst/cmd_id_i
 add wave -noupdate /board/EP/app/PIO/PIO_EP/EP_MEM/inbound_fsm_inst/cmd_next
@@ -66,8 +68,6 @@ add wave -noupdate -radix hexadecimal /board/EP/app/PIO/PIO_EP/EP_MEM/inbound_fs
 add wave -noupdate -radix hexadecimal /board/EP/app/PIO/PIO_EP/EP_MEM/inbound_fsm_inst/req_tag_i
 add wave -noupdate -radix hexadecimal /board/EP/app/PIO/PIO_EP/EP_MEM/inbound_fsm_inst/req_tc_i
 add wave -noupdate -radix hexadecimal /board/EP/app/PIO/PIO_EP/EP_MEM/inbound_fsm_inst/req_td_i
-add wave -noupdate /board/EP/app/PIO/PIO_EP/EP_MEM/inbound_fsm_inst/state
-add wave -noupdate /board/EP/app/PIO/PIO_EP/EP_MEM/inbound_fsm_inst/state_next
 add wave -noupdate /board/EP/app/PIO/PIO_EP/EP_MEM/inbound_fsm_inst/to_rxe_compl_done_o
 add wave -noupdate /board/EP/app/PIO/PIO_EP/EP_MEM/inbound_fsm_inst/up_wr_cmd_compl_i
 add wave -noupdate /board/EP/app/PIO/PIO_EP/EP_MEM/inbound_fsm_inst/us_cmd_fifo_din_o
@@ -84,7 +84,7 @@ add wave -noupdate -radix hexadecimal /board/EP/app/PIO/PIO_EP/EP_MEM/inbound_fs
 add wave -noupdate /board/EP/app/PIO/PIO_EP/EP_MEM/inbound_fsm_inst/wr_en_i
 add wave -noupdate -divider cmd_process
 add wave -noupdate /board/EP/app/PIO/PIO_EP/EP_MEM/cmd_process_fsm_inst/cmd_type
-add wave -noupdate /board/EP/app/PIO/PIO_EP/EP_MEM/cmd_process_fsm_inst/req_addr_o
+add wave -noupdate -radix hexadecimal /board/EP/app/PIO/PIO_EP/EP_MEM/cmd_process_fsm_inst/req_addr_o
 add wave -noupdate /board/EP/app/PIO/PIO_EP/EP_MEM/cmd_process_fsm_inst/state
 add wave -noupdate /board/EP/app/PIO/PIO_EP/EP_MEM/cmd_process_fsm_inst/state_next
 add wave -noupdate /board/EP/app/PIO/PIO_EP/EP_MEM/cmd_process_fsm_inst/txe_compl_done_i
@@ -116,7 +116,7 @@ add wave -noupdate /board/RP/rx_usrapp/trn_rx_in_channel
 add wave -noupdate /board/RP/rx_usrapp/trn_rx_in_frame
 add wave -noupdate /board/RP/rx_usrapp/trn_rx_state
 TreeUpdate [SetDefaultTree]
-WaveRestoreCursors {{Cursor 1} {68135102000 fs} 0} {{Cursor 2} {40559659310 fs} 0}
+WaveRestoreCursors {{Cursor 1} {76391102000 fs} 0} {{Cursor 2} {40862651330 fs} 0}
 configure wave -namecolwidth 243
 configure wave -valuecolwidth 61
 configure wave -justifyvalue left
@@ -131,4 +131,4 @@ configure wave -griddelta 40
 configure wave -timeline 0
 configure wave -timelineunits ns
 update
-WaveRestoreZoom {0 fs} {78570603300 fs}
+WaveRestoreZoom {76389869160 fs} {76392534840 fs}

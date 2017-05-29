@@ -68,6 +68,120 @@ reg expect_status;
 reg expect_finish_check;
 reg status;
 
+/**
+* Write registers in MMIO space, like addr0, addr1, cmd, len.
+*
+* @param value the value of register.
+* @offset offset for register in MMIO space, in units of bytes.
+*/
+task WriteMMIO;
+    input [7:0] offset;
+    input [31:0] value;
+
+    begin
+        $display("[%t] Write MMIO %8x @ %d", $realtime, value, offset);
+        board.RP.tx_usrapp.DATA_STORE[0] = value[31:24];
+        board.RP.tx_usrapp.DATA_STORE[1] = value[23:16];
+        board.RP.tx_usrapp.DATA_STORE[2] = value[15:8 ];
+        board.RP.tx_usrapp.DATA_STORE[3] = value[ 7:0 ];
+
+        board.RP.tx_usrapp.TSK_TX_MEMORY_WRITE_32(
+            board.RP.tx_usrapp.DEFAULT_TAG,
+            board.RP.tx_usrapp.DEFAULT_TC, 10'd1,
+            board.RP.tx_usrapp.BAR_INIT_P_BAR[board.RP.tx_usrapp.ii][31:0]+offset, 4'h0, 4'hF, 1'b0
+        );
+    end
+endtask
+
+task ReadMMIO;
+    input [7:0] offset;
+    input [31:0] expect_value;
+    begin
+        board.RP.tx_usrapp.P_READ_DATA = 32'hffff_ffff;
+        board.RP.tx_usrapp.DATA_STORE[3] = expect_value[31:24];
+        board.RP.tx_usrapp.DATA_STORE[2] = expect_value[23:16];
+        board.RP.tx_usrapp.DATA_STORE[1] = expect_value[15:8];
+        board.RP.tx_usrapp.DATA_STORE[0] = expect_value[7:0];
+        fork
+            board.RP.tx_usrapp.TSK_TX_MEMORY_READ_32(board.RP.tx_usrapp.DEFAULT_TAG,
+                board.RP.tx_usrapp.DEFAULT_TC, 10'd1,
+            board.RP.tx_usrapp.BAR_INIT_P_BAR[board.RP.tx_usrapp.ii][31:0] + offset, 4'h0, 4'hF);
+            board.RP.tx_usrapp.TSK_WAIT_FOR_READ_DATA;
+        join
+        if  (board.RP.tx_usrapp.P_READ_DATA != {board.RP.tx_usrapp.DATA_STORE[0],
+            board.RP.tx_usrapp.DATA_STORE[1], board.RP.tx_usrapp.DATA_STORE[2],
+        board.RP.tx_usrapp.DATA_STORE[3] })
+        begin
+            $display("[%t] : Test FAILED --- Data Error Mismatch, Write Data %x != Read Data %x",
+                $realtime, {board.RP.tx_usrapp.DATA_STORE[0],board.RP.tx_usrapp.DATA_STORE[1],
+                board.RP.tx_usrapp.DATA_STORE[2],board.RP.tx_usrapp.DATA_STORE[3]},
+            board.RP.tx_usrapp.P_READ_DATA);
+
+        end else begin
+            $display("[%t] : Test PASSED --- Write Data: %x successfully received",
+            $realtime, board.RP.tx_usrapp.P_READ_DATA);
+        end
+    end
+endtask
+
+
+/**
+* initiate a signle transfer
+*/
+task INITIATE_SINGLE_XFER;
+    begin
+        $display("[%t] : try to set command register", $realtime );
+        WriteMMIO(8'h0, 32'd1);
+        $display("[%t] : set command completely!", $realtime );
+
+        board.RP.tx_usrapp.DEFAULT_TAG = board.RP.tx_usrapp.DEFAULT_TAG + 1;
+
+        // Wait until endpoint completes UP MemWr
+        board.RP.tx_usrapp.TSK_TX_CLK_EAT(2000);
+
+        //--------------------------------------------------------------------------
+        // Read XferLen Register
+        //--------------------------------------------------------------------------
+
+        board.RP.tx_usrapp.P_READ_DATA = 32'hffff_ffff;
+        // Expected value
+        board.RP.tx_usrapp.DATA_STORE[0] = 8'h02;
+        board.RP.tx_usrapp.DATA_STORE[1] = 8'h00;
+        board.RP.tx_usrapp.DATA_STORE[2] = 8'h00;
+        board.RP.tx_usrapp.DATA_STORE[3] = 8'h00;
+
+        fork
+            $display("[%t] : begin to read command register ", $realtime );
+            board.RP.tx_usrapp.TSK_TX_MEMORY_READ_32(
+                board.RP.tx_usrapp.DEFAULT_TAG,
+                board.RP.tx_usrapp.DEFAULT_TC, 10'd1,
+                board.RP.tx_usrapp.BAR_INIT_P_BAR[board.RP.tx_usrapp.ii][31:0]+8'h0, 4'h0, 4'hF
+            );
+            $display("[%t] : start waiting for read data!", $realtime);
+            board.RP.tx_usrapp.TSK_WAIT_FOR_READ_DATA;
+    join
+    if  (board.RP.tx_usrapp.P_READ_DATA != {board.RP.tx_usrapp.DATA_STORE[3],
+        board.RP.tx_usrapp.DATA_STORE[2], board.RP.tx_usrapp.DATA_STORE[1],
+        board.RP.tx_usrapp.DATA_STORE[0] })
+    begin
+        $display(
+            "[%t] : Test FAILED --- Data Error Mismatch, Write Data %x != Read Data %x",
+            $realtime, {board.RP.tx_usrapp.DATA_STORE[3],board.RP.tx_usrapp.DATA_STORE[2],
+            board.RP.tx_usrapp.DATA_STORE[1],board.RP.tx_usrapp.DATA_STORE[0]},
+            board.RP.tx_usrapp.P_READ_DATA
+        );
+
+    end
+    else
+    begin
+        $display(
+            "[%t] : Test PASSED --- Read Cmd Data: %x successfully received",
+            $realtime, board.RP.tx_usrapp.P_READ_DATA
+        );
+    end
+end
+endtask
+
 task pio_up_wr_test0;
     begin
 
@@ -96,32 +210,28 @@ task pio_up_wr_test0;
                         /* Event Memory Write 32 bit TLP */
 
                         /* write ADDR 0 by 0x7698CA00*/
-                        board.RP.tx_usrapp.DATA_STORE[0] = 8'h76;
-                        board.RP.tx_usrapp.DATA_STORE[1] = 8'h98;
-                        board.RP.tx_usrapp.DATA_STORE[2] = 8'hCA;
-                        board.RP.tx_usrapp.DATA_STORE[3] = 8'h00;
+                        WriteMMIO(8'h10, 32'h7698CA00);
+                        board.RP.tx_usrapp.TSK_TX_CLK_EAT(50);
+                        board.RP.tx_usrapp.DEFAULT_TAG = board.RP.tx_usrapp.DEFAULT_TAG + 1;
+                        ReadMMIO(8'h10, 32'h7698CA00);
+                        
+                        //board.RP.tx_usrapp.DATA_STORE[0] = 8'h76;
+                        //board.RP.tx_usrapp.DATA_STORE[1] = 8'h98;
+                        //board.RP.tx_usrapp.DATA_STORE[2] = 8'hCA;
+                        //board.RP.tx_usrapp.DATA_STORE[3] = 8'h00;
 
-                        board.RP.tx_usrapp.TSK_TX_MEMORY_WRITE_32(
-                            board.RP.tx_usrapp.DEFAULT_TAG,
-                            board.RP.tx_usrapp.DEFAULT_TC, 10'd1,
-                            board.RP.tx_usrapp.BAR_INIT_P_BAR[board.RP.tx_usrapp.ii][31:0] + 8'h10,
-                        4'h0, 4'hF, 1'b0 );
+                        //board.RP.tx_usrapp.TSK_TX_MEMORY_WRITE_32(
+                        //    board.RP.tx_usrapp.DEFAULT_TAG,
+                        //    board.RP.tx_usrapp.DEFAULT_TC, 10'd1,
+                        //    board.RP.tx_usrapp.BAR_INIT_P_BAR[board.RP.tx_usrapp.ii][31:0] + 8'h10,
+                        //4'h0, 4'hF, 1'b0 );
 
-                        board.RP.tx_usrapp.TSK_TX_CLK_EAT(10);
+                        board.RP.tx_usrapp.TSK_TX_CLK_EAT(50);
                         board.RP.tx_usrapp.DEFAULT_TAG = board.RP.tx_usrapp.DEFAULT_TAG + 1;
 
 
                         /* write CMD to kick off upstream Wr32 transfer */
-                        board.RP.tx_usrapp.DATA_STORE[0] = 8'h00;
-                        board.RP.tx_usrapp.DATA_STORE[1] = 8'h00;
-                        board.RP.tx_usrapp.DATA_STORE[2] = 8'h00;
-                        board.RP.tx_usrapp.DATA_STORE[3] = 8'h01;
-
-                        board.RP.tx_usrapp.TSK_TX_MEMORY_WRITE_32(
-                            board.RP.tx_usrapp.DEFAULT_TAG,
-                            board.RP.tx_usrapp.DEFAULT_TC, 10'd1,
-                            board.RP.tx_usrapp.BAR_INIT_P_BAR[board.RP.tx_usrapp.ii][31:0] + 8'h00,
-                        4'h0, 4'hF, 1'b0 );
+                        WriteMMIO(8'h0, 32'd1);
 
                         board.RP.tx_usrapp.TSK_TX_CLK_EAT(1000);
                         board.RP.tx_usrapp.DEFAULT_TAG = board.RP.tx_usrapp.DEFAULT_TAG + 1;
@@ -129,13 +239,16 @@ task pio_up_wr_test0;
 
 
                         /* Event Memory Read 32 bit TLP */
-                        /* make sure P_READ_DATA has known initial value */
-                        /*
+                        /* Read State register, should be all 0.*/
                         board.RP.tx_usrapp.P_READ_DATA = 32'hffff_ffff;
+                        board.RP.tx_usrapp.DATA_STORE[0] = 8'h00;
+                        board.RP.tx_usrapp.DATA_STORE[1] = 8'h00;
+                        board.RP.tx_usrapp.DATA_STORE[2] = 8'h00;
+                        board.RP.tx_usrapp.DATA_STORE[3] = 8'h00;
                         fork
                             board.RP.tx_usrapp.TSK_TX_MEMORY_READ_32(board.RP.tx_usrapp.DEFAULT_TAG,
                                 board.RP.tx_usrapp.DEFAULT_TC, 10'd1,
-                            board.RP.tx_usrapp.BAR_INIT_P_BAR[board.RP.tx_usrapp.ii][31:0]+8'h10, 4'h0, 4'hF);
+                            board.RP.tx_usrapp.BAR_INIT_P_BAR[board.RP.tx_usrapp.ii][31:0]+8'h8, 4'h0, 4'hF);
                             board.RP.tx_usrapp.TSK_WAIT_FOR_READ_DATA;
                         join
                         if  (board.RP.tx_usrapp.P_READ_DATA != {board.RP.tx_usrapp.DATA_STORE[3],
@@ -151,7 +264,6 @@ task pio_up_wr_test0;
                             $display("[%t] : Test PASSED --- Write Data: %x successfully received",
                             $realtime, board.RP.tx_usrapp.P_READ_DATA);
                         end
-                        */
 
                         board.RP.tx_usrapp.TSK_TX_CLK_EAT(1000);
                         board.RP.tx_usrapp.DEFAULT_TAG = board.RP.tx_usrapp.DEFAULT_TAG + 1;
