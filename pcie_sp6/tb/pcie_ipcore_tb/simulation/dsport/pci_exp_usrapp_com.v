@@ -1134,6 +1134,7 @@ task TSK_EXPECT_MEMWR;
       if (payload_len==0) payload_len = 4096;
 
       $display("[%t] : Received MEMWR --- Tag 0x%h", $realtime, tag_);
+      $display("[%t] : payload_len %3d", $realtime, payload_len);
       if(tag == tag_) //find matching tag
       begin
         wait_for_next = 1'b0;

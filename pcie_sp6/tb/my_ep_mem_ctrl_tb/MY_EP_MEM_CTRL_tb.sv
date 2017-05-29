@@ -1,3 +1,6 @@
+/**
+* Test bench for Write/Read register in inbound_fsm
+*/
 `timescale 1ns / 1ps
 
 module MY_EP_MEM_CTRL_tb();
@@ -7,7 +10,6 @@ parameter CLOCKPERIOD = 20;
 logic               clk;
 logic               rst_n;
 logic               rx_np_ok;
-logic   [1:0]       cmd_id_i;
 logic               req_compl_i;
 logic               req_compl_with_data_i;
 logic               to_rxe_compl_done_o;
@@ -47,7 +49,6 @@ MY_EP_MEM_CTRL	MY_EP_MEM_CTRLEx01
 	.clk                  	(	clk                  	),
 	.rst_n                	(	rst_n                	),
 	.rx_np_ok             	(	rx_np_ok             	),
-	.cmd_id_i             	(	cmd_id_i             	),
 	.req_compl_i          	(	req_compl_i          	),
 	.req_compl_with_data_i	(	req_compl_with_data_i	),
 	.to_rxe_compl_done_o    (	to_rxe_compl_done_o     ),

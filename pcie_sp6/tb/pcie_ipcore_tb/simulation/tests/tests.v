@@ -68,14 +68,230 @@ reg expect_status;
 reg expect_finish_check;
 reg status;
 
-task pio_up_wr_test0;
+/**
+* Write registers in MMIO space, like addr0, addr1, cmd, len.
+*
+* @param value the value of register.
+* @offset offset for register in MMIO space, in units of bytes.
+*/
+task WriteMMIO;
+    input [7:0] offset;
+    input [31:0] value;
+
     begin
+        $display("[%t] Write MMIO %8x@%3d", $realtime, value, offset);
+        board.RP.tx_usrapp.DATA_STORE[0] = value[31:24];
+        board.RP.tx_usrapp.DATA_STORE[1] = value[23:16];
+        board.RP.tx_usrapp.DATA_STORE[2] = value[15:8 ];
+        board.RP.tx_usrapp.DATA_STORE[3] = value[ 7:0 ];
+
+        board.RP.tx_usrapp.TSK_TX_MEMORY_WRITE_32(
+            board.RP.tx_usrapp.DEFAULT_TAG,
+            board.RP.tx_usrapp.DEFAULT_TC, 10'd1,
+            board.RP.tx_usrapp.BAR_INIT_P_BAR[board.RP.tx_usrapp.ii][31:0]+offset, 4'h0, 4'hF, 1'b0
+        );
+    end
+endtask
+
+/**
+* Read register value in MMIO space
+*
+* @param offset offset in MMIO space.
+* @param expect_value the expected value of the register.
+*/
+task ReadMMIO;
+    input [7:0] offset;
+    input [31:0] expect_value;
+    begin
+        $display("[%t] Read  MMIO register @%3d, expected %8x", $realtime,  offset, expect_value);
+        board.RP.tx_usrapp.P_READ_DATA = 32'hffff_ffff;
+        board.RP.tx_usrapp.DATA_STORE[3] = expect_value[31:24];
+        board.RP.tx_usrapp.DATA_STORE[2] = expect_value[23:16];
+        board.RP.tx_usrapp.DATA_STORE[1] = expect_value[15:8];
+        board.RP.tx_usrapp.DATA_STORE[0] = expect_value[7:0];
+        fork
+            board.RP.tx_usrapp.TSK_TX_MEMORY_READ_32(board.RP.tx_usrapp.DEFAULT_TAG,
+                board.RP.tx_usrapp.DEFAULT_TC, 10'd1,
+            board.RP.tx_usrapp.BAR_INIT_P_BAR[board.RP.tx_usrapp.ii][31:0] + offset, 4'h0, 4'hF);
+            board.RP.tx_usrapp.TSK_WAIT_FOR_READ_DATA;
+        join
+        if  (board.RP.tx_usrapp.P_READ_DATA != {board.RP.tx_usrapp.DATA_STORE[0],
+            board.RP.tx_usrapp.DATA_STORE[1], board.RP.tx_usrapp.DATA_STORE[2],
+        board.RP.tx_usrapp.DATA_STORE[3] })
+        begin
+            $display("[%t] : ReadMMIO FAILED --- Register %8x : expected Data %x != actually Read Data %x",
+                $realtime, offset,
+                {board.RP.tx_usrapp.DATA_STORE[0],board.RP.tx_usrapp.DATA_STORE[1],
+                board.RP.tx_usrapp.DATA_STORE[2],board.RP.tx_usrapp.DATA_STORE[3]},
+            board.RP.tx_usrapp.P_READ_DATA);
+
+        end else begin
+            $display("[%t] : ReadMMIO PASSED --- Read Data: %x@%4d successfully received",
+            $realtime, board.RP.tx_usrapp.P_READ_DATA, offset);
+        end
+    end
+endtask
+
+
+/**
+* initiate a signle transfer
+*/
+task INITIATE_SINGLE_XFER;
+    begin
+        $display("[%t] : try to set command register", $realtime );
+        WriteMMIO(8'h0, 32'd1);
+        $display("[%t] : set command completely!", $realtime );
+
+        board.RP.tx_usrapp.DEFAULT_TAG = board.RP.tx_usrapp.DEFAULT_TAG + 1;
+
+        // Wait until endpoint completes UP MemWr
+        board.RP.tx_usrapp.TSK_TX_CLK_EAT(2000);
+
+        //--------------------------------------------------------------------------
+        // Read XferLen Register
+        //--------------------------------------------------------------------------
+
+        board.RP.tx_usrapp.P_READ_DATA = 32'hffff_ffff;
+        // Expected value
+        board.RP.tx_usrapp.DATA_STORE[0] = 8'h02;
+        board.RP.tx_usrapp.DATA_STORE[1] = 8'h00;
+        board.RP.tx_usrapp.DATA_STORE[2] = 8'h00;
+        board.RP.tx_usrapp.DATA_STORE[3] = 8'h00;
+
+        fork
+            $display("[%t] : begin to read command register ", $realtime );
+            board.RP.tx_usrapp.TSK_TX_MEMORY_READ_32(
+                board.RP.tx_usrapp.DEFAULT_TAG,
+                board.RP.tx_usrapp.DEFAULT_TC, 10'd1,
+                board.RP.tx_usrapp.BAR_INIT_P_BAR[board.RP.tx_usrapp.ii][31:0]+8'h0, 4'h0, 4'hF
+            );
+            $display("[%t] : start waiting for read data!", $realtime);
+            board.RP.tx_usrapp.TSK_WAIT_FOR_READ_DATA;
+    join
+    if  (board.RP.tx_usrapp.P_READ_DATA != {board.RP.tx_usrapp.DATA_STORE[3],
+        board.RP.tx_usrapp.DATA_STORE[2], board.RP.tx_usrapp.DATA_STORE[1],
+        board.RP.tx_usrapp.DATA_STORE[0] })
+    begin
+        $display(
+            "[%t] : Test FAILED --- Data Error Mismatch, Write Data %x != Read Data %x",
+            $realtime, {board.RP.tx_usrapp.DATA_STORE[3],board.RP.tx_usrapp.DATA_STORE[2],
+            board.RP.tx_usrapp.DATA_STORE[1],board.RP.tx_usrapp.DATA_STORE[0]},
+            board.RP.tx_usrapp.P_READ_DATA
+        );
+
+    end
+    else
+    begin
+        $display(
+            "[%t] : Test PASSED --- Read Cmd Data: %x successfully received",
+            $realtime, board.RP.tx_usrapp.P_READ_DATA
+        );
+    end
+end
+endtask
+
+reg mem_clk;
+reg [9:0]  mem_addr;
+wire [31:0] mem_dout;
+
+LOCAL_MEM	LOCAL_MEMEx01
+(
+	.clk 	(	mem_clk 	),
+	.we  	(	        	),
+	.addr	(	mem_addr	),
+	.din 	(	        	),
+	.dout	(	mem_dout	)
+) ;
+
+/**
+* clean expect_memwr_payload by input parameter len.
+*/
+task tsk_zero_expected_data;
+    input [7:0] len; // in units of DWORD
+    integer i;
+    begin
+        for(i = 0; i < len; i = i + 1)
+        begin
+            expect_memwr_payload[i * 4 + 0] = 0;
+            expect_memwr_payload[i * 4 + 1] = 0;
+            expect_memwr_payload[i * 4 + 2] = 0;
+            expect_memwr_payload[i * 4 + 3] = 0;
+        end
+    end
+endtask
+
+/**
+* initiate expect_memwr_payload with LOCAL_MEM module by input param len, in units of DWORD
+*/
+task tsk_init_expected_data;
+    input [7:0] len;  // in units of DWORD
+    integer i;
+    begin
+        mem_clk = 0;
+        fork
+            repeat (len * 2 + 4) #2 mem_clk = ~mem_clk;
+            begin
+                mem_addr = 0; @(posedge mem_clk);
+                i = 0;
+                for(i = 0; i < len; i = i + 1)
+                begin
+                    mem_addr = mem_addr + 1;
+                    @(posedge mem_clk);
+                    $display("[%t] : %1d mem_dout %8x", $realtime, i, mem_dout);
+                    expect_memwr_payload[i * 4 + 0] = mem_dout[31:24];
+                    expect_memwr_payload[i * 4 + 1] = mem_dout[23:16];
+                    expect_memwr_payload[i * 4 + 2] = mem_dout[15:8];
+                    expect_memwr_payload[i * 4 + 3] = mem_dout[7:0];
+                end
+            end
+        join
+    end
+endtask
+/**
+* expect 128 bytes from LOCAL_MEM module
+*
+* @return expect_status 1: success, 0: failed
+*/
+task tsk_check_upstream_wr32;
+    input [31:0] host_addr;
+    integer expect_status;
+    begin
+        $display("[%t] : wait for MemWr32 to host_addr %8x...", $realtime, host_addr);
+
+        board.RP.com_usrapp.TSK_EXPECT_MEMWR(
+            0, 0, 0, 0,
+            10'd32, // length, in units of DWs
+            15'h1a0, // requester id
+            0,  // tag
+            4'b1111, 4'b1111, 
+            (host_addr >> 2),
+            expect_status
+        );
+        $display("[%t] : MemWr32 complete status %s (%1d)", $realtime, (expect_status == 1) ? "PASSED" : "FAILED", expect_status);
+    end
+endtask
+
+`define CMD_MAX_NUM 2
+task pio_up_wr_test0;
+    integer host_addr[`CMD_MAX_NUM -1:0];
+    integer i;
+    integer cmd_bitmap;
+    begin
+        tsk_zero_expected_data(32);
+        tsk_init_expected_data(32);
 
         /* This test performs a 32 bit write to a 32 bit Memory space and performs a read back */
-
         board.RP.tx_usrapp.TSK_SIMULATION_TIMEOUT(10050);
         board.RP.tx_usrapp.TSK_SYSTEM_INITIALIZATION;
         board.RP.tx_usrapp.TSK_BAR_INIT;
+
+        /**
+        * Direct Root Port to allow upstream traffic by enabling Mem, I/O and
+        * BusMstr in the command register
+        */
+        board.RP.cfg_usrapp.TSK_READ_CFG_DW(32'h00000001);
+        board.RP.cfg_usrapp.TSK_WRITE_CFG_DW(32'h00000001, 32'h00000007, 4'b1110);
+        board.RP.cfg_usrapp.TSK_READ_CFG_DW(32'h00000001);
 
         for (board.RP.tx_usrapp.ii = 0; board.RP.tx_usrapp.ii <= 6; board.RP.tx_usrapp.ii = board.RP.tx_usrapp.ii + 1)
         begin
@@ -92,69 +308,58 @@ task pio_up_wr_test0;
                     begin
 
                         $display("[%t] : Transmitting TLPs to Memory 32 Space BAR %x", $realtime, board.RP.tx_usrapp.ii);
-
-                        /* Event Memory Write 32 bit TLP */
+                        host_addr[0] = 32'h7698CA00;
+                        host_addr[1] = 32'h602CE400;
+                        cmd_bitmap = 0;
+                        for (i = 0; i < `CMD_MAX_NUM; i = i + 1)
+                        begin
+                            cmd_bitmap = cmd_bitmap | (1 << i);
+                            host_addr[i] = $random << 2;
+                        end
 
                         /* write ADDR 0 by 0x7698CA00*/
-                        board.RP.tx_usrapp.DATA_STORE[0] = 8'h76;
-                        board.RP.tx_usrapp.DATA_STORE[1] = 8'h98;
-                        board.RP.tx_usrapp.DATA_STORE[2] = 8'hCA;
-                        board.RP.tx_usrapp.DATA_STORE[3] = 8'h00;
-
-                        board.RP.tx_usrapp.TSK_TX_MEMORY_WRITE_32(
-                            board.RP.tx_usrapp.DEFAULT_TAG,
-                            board.RP.tx_usrapp.DEFAULT_TC, 10'd1,
-                            board.RP.tx_usrapp.BAR_INIT_P_BAR[board.RP.tx_usrapp.ii][31:0] + 8'h10,
-                        4'h0, 4'hF, 1'b0 );
-
-                        board.RP.tx_usrapp.TSK_TX_CLK_EAT(10);
+                        WriteMMIO(8'h10, host_addr[0]);
+                        //board.RP.tx_usrapp.TSK_TX_CLK_EAT(50);
                         board.RP.tx_usrapp.DEFAULT_TAG = board.RP.tx_usrapp.DEFAULT_TAG + 1;
 
-
-                        /* write CMD to kick off upstream Wr32 transfer */
-                        board.RP.tx_usrapp.DATA_STORE[0] = 8'h00;
-                        board.RP.tx_usrapp.DATA_STORE[1] = 8'h00;
-                        board.RP.tx_usrapp.DATA_STORE[2] = 8'h00;
-                        board.RP.tx_usrapp.DATA_STORE[3] = 8'h01;
-
-                        board.RP.tx_usrapp.TSK_TX_MEMORY_WRITE_32(
-                            board.RP.tx_usrapp.DEFAULT_TAG,
-                            board.RP.tx_usrapp.DEFAULT_TC, 10'd1,
-                            board.RP.tx_usrapp.BAR_INIT_P_BAR[board.RP.tx_usrapp.ii][31:0] + 8'h00,
-                        4'h0, 4'hF, 1'b0 );
-
-                        board.RP.tx_usrapp.TSK_TX_CLK_EAT(1000);
+                        ReadMMIO(8'h10, host_addr[0]);
                         board.RP.tx_usrapp.DEFAULT_TAG = board.RP.tx_usrapp.DEFAULT_TAG + 1;
-                        $display("[%t] : P_READ_DATA %x", $realtime, board.RP.tx_usrapp.P_READ_DATA);
 
-
-                        /* Event Memory Read 32 bit TLP */
-                        /* make sure P_READ_DATA has known initial value */
-                        /*
-                        board.RP.tx_usrapp.P_READ_DATA = 32'hffff_ffff;
-                        fork
-                            board.RP.tx_usrapp.TSK_TX_MEMORY_READ_32(board.RP.tx_usrapp.DEFAULT_TAG,
-                                board.RP.tx_usrapp.DEFAULT_TC, 10'd1,
-                            board.RP.tx_usrapp.BAR_INIT_P_BAR[board.RP.tx_usrapp.ii][31:0]+8'h10, 4'h0, 4'hF);
-                            board.RP.tx_usrapp.TSK_WAIT_FOR_READ_DATA;
-                        join
-                        if  (board.RP.tx_usrapp.P_READ_DATA != {board.RP.tx_usrapp.DATA_STORE[3],
-                            board.RP.tx_usrapp.DATA_STORE[2], board.RP.tx_usrapp.DATA_STORE[1],
-                        board.RP.tx_usrapp.DATA_STORE[0] })
+                        for (i = 0; i < `CMD_MAX_NUM; i = i + 1)
                         begin
-                            $display("[%t] : Test FAILED --- Data Error Mismatch, Write Data %x != Read Data %x",
-                                $realtime, {board.RP.tx_usrapp.DATA_STORE[3],board.RP.tx_usrapp.DATA_STORE[2],
-                                board.RP.tx_usrapp.DATA_STORE[1],board.RP.tx_usrapp.DATA_STORE[0]},
-                            board.RP.tx_usrapp.P_READ_DATA);
-
-                        end else begin
-                            $display("[%t] : Test PASSED --- Write Data: %x successfully received",
-                            $realtime, board.RP.tx_usrapp.P_READ_DATA);
+                            WriteMMIO(8'h10 + i * 8, host_addr[i]);
+                            board.RP.tx_usrapp.DEFAULT_TAG = board.RP.tx_usrapp.DEFAULT_TAG + 1;
+                            WriteMMIO(8'h0, (1 << i));
+                            board.RP.tx_usrapp.DEFAULT_TAG = board.RP.tx_usrapp.DEFAULT_TAG + 1;
+                            tsk_check_upstream_wr32(host_addr[i]);
+                            ReadMMIO(8'h8, 32'h00);
+                            board.RP.tx_usrapp.DEFAULT_TAG = board.RP.tx_usrapp.DEFAULT_TAG + 1;
                         end
-                        */
 
-                        board.RP.tx_usrapp.TSK_TX_CLK_EAT(1000);
+                        /* Initiate all cmds in one time*/
+                        WriteMMIO(8'h0, cmd_bitmap);
                         board.RP.tx_usrapp.DEFAULT_TAG = board.RP.tx_usrapp.DEFAULT_TAG + 1;
+                        for(i = 0; i < `CMD_MAX_NUM; i = i + 1)
+                        begin
+                            tsk_check_upstream_wr32(host_addr[i]);
+                        end
+                        /* Read State register, should be all 0.*/
+                        ReadMMIO(8'h8, 32'h00);
+                        //board.RP.tx_usrapp.TSK_TX_CLK_EAT(1000);
+                        board.RP.tx_usrapp.DEFAULT_TAG = board.RP.tx_usrapp.DEFAULT_TAG + 1;
+
+                        host_addr[0] = 32'h70004000;
+                        host_addr[1] = 32'hC123B500;
+                        for (i = 0; i < 2; i = i + 1)
+                        begin
+                            WriteMMIO(8'h10 + i * 8, host_addr[i]);
+                            board.RP.tx_usrapp.DEFAULT_TAG = board.RP.tx_usrapp.DEFAULT_TAG + 1;
+                            WriteMMIO(8'h0, (1 << i));
+                            board.RP.tx_usrapp.DEFAULT_TAG = board.RP.tx_usrapp.DEFAULT_TAG + 1;
+                            tsk_check_upstream_wr32(host_addr[i]);
+                            ReadMMIO(8'h8, 32'h00);
+                            board.RP.tx_usrapp.DEFAULT_TAG = board.RP.tx_usrapp.DEFAULT_TAG + 1;
+                        end
 
                     end
                     2'b11 : // MEM 64 SPACE
