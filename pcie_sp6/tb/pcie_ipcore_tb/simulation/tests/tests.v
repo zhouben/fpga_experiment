@@ -253,9 +253,10 @@ endtask
 * @return expect_status 1: success, 0: failed
 */
 task tsk_check_upstream_wr32;
+    input [31:0] host_addr;
     integer expect_status;
     begin
-        $display("[%t] : begin to wait for MemWr32 ...", $realtime);
+        $display("[%t] : wait for MemWr32 to host_addr %8x...", $realtime, host_addr);
 
         board.RP.com_usrapp.TSK_EXPECT_MEMWR(
             0, 0, 0, 0,
@@ -263,14 +264,18 @@ task tsk_check_upstream_wr32;
             15'h1a0, // requester id
             0,  // tag
             4'b1111, 4'b1111, 
-            (32'h7698CA00 >> 2),
+            (host_addr >> 2),
             expect_status
         );
-        $display("[%t] : end of waiting for MemWr32 status %s (%1d)", $realtime, (expect_status == 1) ? "PASSED" : "FAILED", expect_status);
+        $display("[%t] : MemWr32 complete status %s (%1d)", $realtime, (expect_status == 1) ? "PASSED" : "FAILED", expect_status);
     end
 endtask
 
+`define CMD_MAX_NUM 2
 task pio_up_wr_test0;
+    integer host_addr[`CMD_MAX_NUM -1:0];
+    integer i;
+    integer cmd_bitmap;
     begin
         tsk_zero_expected_data(32);
         tsk_init_expected_data(32);
@@ -303,29 +308,58 @@ task pio_up_wr_test0;
                     begin
 
                         $display("[%t] : Transmitting TLPs to Memory 32 Space BAR %x", $realtime, board.RP.tx_usrapp.ii);
-
-                        /* Event Memory Write 32 bit TLP */
+                        host_addr[0] = 32'h7698CA00;
+                        host_addr[1] = 32'h602CE400;
+                        cmd_bitmap = 0;
+                        for (i = 0; i < `CMD_MAX_NUM; i = i + 1)
+                        begin
+                            cmd_bitmap = cmd_bitmap | (1 << i);
+                            host_addr[i] = $random << 2;
+                        end
 
                         /* write ADDR 0 by 0x7698CA00*/
-                        WriteMMIO(8'h10, 32'h7698CA00);
+                        WriteMMIO(8'h10, host_addr[0]);
                         //board.RP.tx_usrapp.TSK_TX_CLK_EAT(50);
                         board.RP.tx_usrapp.DEFAULT_TAG = board.RP.tx_usrapp.DEFAULT_TAG + 1;
 
-                        ReadMMIO(8'h10, 32'h7698CA00);
+                        ReadMMIO(8'h10, host_addr[0]);
                         board.RP.tx_usrapp.DEFAULT_TAG = board.RP.tx_usrapp.DEFAULT_TAG + 1;
 
-                        /* write CMD to kick off upstream Wr32 transfer */
-                        WriteMMIO(8'h0, 32'd1);
+                        for (i = 0; i < `CMD_MAX_NUM; i = i + 1)
+                        begin
+                            WriteMMIO(8'h10 + i * 8, host_addr[i]);
+                            board.RP.tx_usrapp.DEFAULT_TAG = board.RP.tx_usrapp.DEFAULT_TAG + 1;
+                            WriteMMIO(8'h0, (1 << i));
+                            board.RP.tx_usrapp.DEFAULT_TAG = board.RP.tx_usrapp.DEFAULT_TAG + 1;
+                            tsk_check_upstream_wr32(host_addr[i]);
+                            ReadMMIO(8'h8, 32'h00);
+                            board.RP.tx_usrapp.DEFAULT_TAG = board.RP.tx_usrapp.DEFAULT_TAG + 1;
+                        end
 
+                        /* Initiate all cmds in one time*/
+                        WriteMMIO(8'h0, cmd_bitmap);
                         board.RP.tx_usrapp.DEFAULT_TAG = board.RP.tx_usrapp.DEFAULT_TAG + 1;
-
-                        tsk_check_upstream_wr32;
-
-                        /* Event Memory Read 32 bit TLP */
+                        for(i = 0; i < `CMD_MAX_NUM; i = i + 1)
+                        begin
+                            tsk_check_upstream_wr32(host_addr[i]);
+                        end
                         /* Read State register, should be all 0.*/
                         ReadMMIO(8'h8, 32'h00);
-                        board.RP.tx_usrapp.TSK_TX_CLK_EAT(1000);
+                        //board.RP.tx_usrapp.TSK_TX_CLK_EAT(1000);
                         board.RP.tx_usrapp.DEFAULT_TAG = board.RP.tx_usrapp.DEFAULT_TAG + 1;
+
+                        host_addr[0] = 32'h70004000;
+                        host_addr[1] = 32'hC123B500;
+                        for (i = 0; i < 2; i = i + 1)
+                        begin
+                            WriteMMIO(8'h10 + i * 8, host_addr[i]);
+                            board.RP.tx_usrapp.DEFAULT_TAG = board.RP.tx_usrapp.DEFAULT_TAG + 1;
+                            WriteMMIO(8'h0, (1 << i));
+                            board.RP.tx_usrapp.DEFAULT_TAG = board.RP.tx_usrapp.DEFAULT_TAG + 1;
+                            tsk_check_upstream_wr32(host_addr[i]);
+                            ReadMMIO(8'h8, 32'h00);
+                            board.RP.tx_usrapp.DEFAULT_TAG = board.RP.tx_usrapp.DEFAULT_TAG + 1;
+                        end
 
                     end
                     2'b11 : // MEM 64 SPACE
