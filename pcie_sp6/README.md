@@ -10,4 +10,4 @@
  1. simple test for write and read item to/from us\_cmd\_fifo
 1. TB for pcie
  1. write ADDR0 and read back using original PCIe modules.
- 1. write CMD and initiate upstream Wr32 transfer. 只有仿真波形，尚未利用原有的tb验证。
+ 1. 多笔 write CMD and initiate upstream Wr32 transfer. 原有的tb验证通过。
