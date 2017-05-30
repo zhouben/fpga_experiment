@@ -1,3 +1,4 @@
+
 import os
 import sys
 import subprocess
@@ -5,6 +6,11 @@ import argparse
 import shutil
 
 def main():
+    """run test cases
+
+    usage: python smoke_test.py -1   : run all test cases.
+           python smoke_test.py 3    : run No.3 test case
+    """
     test_case_array = [
         {"name" : "LOCAL_MEM_tb"  ,       "description" : "test bench for LOCAL_MEM",            "path" : './local_mem_tb/',       "script" : 'LOCAL_MEM_tb_sv.do' },
         {"name" : "inbound_fsm_tb",       "description" : "test bench for inbound moudle",       "path" : './inbound_tb/',         "script" : 'inbound_fsm_tb.do' },

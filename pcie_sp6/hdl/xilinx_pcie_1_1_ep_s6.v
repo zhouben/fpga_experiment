@@ -65,11 +65,23 @@ module xilinx_pcie_1_1_ep_s6 #(
 
   input     sys_clk_p,
   input     sys_clk_n,
-  input     sys_reset_n,
+  input     sys_reset_n_i,
 
+  input     s_1,
+  input     s_2,
+
+  output    ld_1,
+  output    ld_2,
+  output    ld_3,
+  output    ld_4,
+  output    ld_5,
+  output    ld_6,
+  output    ld_7,
+  output    ld_8,
   output    led_0,
   output    led_1,
-  output    led_2
+  output    led_2,
+  output reg led_3
 
 );
 
@@ -155,8 +167,35 @@ module xilinx_pcie_1_1_ep_s6 #(
 
   // System (SYS) Interface
   wire                                        sys_clk_c;
-  wire                                        sys_reset_n_c;
+  wire                                        sys_reset_n_prst;
 
+  wire                  sys_reset_n;
+  wire                  sys_reset_n_manual;
+  wire                  sys_reset_n_perst;
+  reg [26:0]            count;
+
+  assign ld_1 = 1'b1;
+  assign ld_2 = 1'b1;
+  assign ld_3 = 1'b0;
+  assign ld_4 = 1'b0;
+  assign ld_5 = 1'b1;
+  assign ld_6 = 1'b1;
+  assign ld_7 = 1'b1;
+  assign ld_8 = 1'b1;
+  
+  always @(posedge user_clk) begin
+      if (~s_2) begin
+          count <= 0;
+          led_3 <= 0;
+      end else begin
+          if (count == 27'd10048576_00 - 1) begin
+              count <= 0;
+              led_3 <= ~led_3;
+          end else begin
+              count <= count + 1;
+          end
+      end
+  end
   //-------------------------------------------------------
   // Clock Input Buffer for differential system clock
   //-------------------------------------------------------
@@ -165,14 +204,17 @@ module xilinx_pcie_1_1_ep_s6 #(
   //-------------------------------------------------------
   // Input buffer for system reset signal
   //-------------------------------------------------------
-  IBUF   sys_reset_n_ibuf (.O(sys_reset_n_c), .I(sys_reset_n));
+  IBUF   sys_reset_n_ibuf (.O(sys_reset_n_perst), .I(sys_reset_n_i));
+  IBUF   sys_reset_n_ibuf_x2 (.O(sys_reset_n_manual), .I(s_1));
+  assign sys_reset_n = sys_reset_n_perst & sys_reset_n_manual;
 
   //-------------------------------------------------------
   // Output buffers for diagnostic LEDs
   //-------------------------------------------------------
-  OBUF   led_0_obuf (.O(led_0), .I(sys_reset_n_c));
+  OBUF   led_0_obuf (.O(led_0), .I(sys_reset_n_perst));
   OBUF   led_1_obuf (.O(led_1), .I(user_reset));
   OBUF   led_2_obuf (.O(led_2), .I(user_lnk_up));
+
 
   pcie_app_s6 app (
     // Transaction (TRN) Interface
@@ -341,7 +383,7 @@ module xilinx_pcie_1_1_ep_s6 #(
 
     // System (SYS) Interface
     .sys_clk                            ( sys_clk_c                               ),
-    .sys_reset                          ( !sys_reset_n_c                          ),
+    .sys_reset                          ( ~sys_reset_n                            ),
     .received_hot_reset                 (                                         )
   );
 

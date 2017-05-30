@@ -1,4 +1,9 @@
 在 Spartan6 上实现 PCIe IP core
+1. PCIe upstream Wr32 传输基本128bytes，2 cmd，FPGA测试通过。
+ 1. offset  0: cmd, bit0 cmd0, bit1 cmd1
+ 1. offset  8: state, 1 busy, 0 idle
+ 1. offset 16: address 0
+ 1. offset 24: address 1
 1. Run ``python smoke_test.py -1`` 测试所有的测试用例
 1. 读写Device Registers
 1. 运行 tb/smoke\_test.py 可以自动运行所有的tb

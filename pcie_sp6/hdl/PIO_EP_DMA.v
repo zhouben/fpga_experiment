@@ -258,7 +258,17 @@ PIO_32_TX_ENGINE EP_TX (
     .completer_id_i(cfg_completer_id),  // I [15:0]
     .cfg_bus_mstr_enable_i(cfg_bus_mstr_enable) // I
 );
-
+`define USING_FAKE_LOCAL_MEM
+`ifdef USING_FAKE_LOCAL_MEM
+LOCAL_MEM_FAKE    LOCAL_MEMEx01
+(
+    .clk     (clk                   ),
+    .we      (                      ),
+    .addr    (up_wr_local_mem_addr  ),
+    .din     (                      ),
+    .dout    (up_wr_data            )
+);
+`else
 LOCAL_MEM    LOCAL_MEMEx01
 (
     .clk     (clk                   ),
@@ -267,7 +277,7 @@ LOCAL_MEM    LOCAL_MEMEx01
     .din     (                      ),
     .dout    (up_wr_data            )
 );
-
+`endif
 assign req_compl_o  = from_rxe_req_compl;
 assign compl_done_o = to_rxe_compl_done;
 endmodule // PIO_EP

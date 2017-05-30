@@ -97,7 +97,9 @@ module board;
     // SYS Inteface
     .sys_clk_p(ep_sys_clk_p),
     .sys_clk_n(ep_sys_clk_n),
-    .sys_reset_n(sys_reset_n),
+    .sys_reset_n_i(sys_reset_n),
+    .s_1        (1),
+    .s_2        (1),
 
     // PCI-Express Interface
     .pci_exp_txn(ep_pci_exp_txn),
