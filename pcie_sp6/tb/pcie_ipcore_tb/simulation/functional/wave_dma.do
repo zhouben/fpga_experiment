@@ -38,6 +38,7 @@ add wave -noupdate -radix hexadecimal /board/EP/app/PIO/PIO_EP/EP_TX/up_wr_data_
 add wave -noupdate -radix hexadecimal /board/EP/app/PIO/PIO_EP/EP_TX/up_wr_host_mem_addr_i
 add wave -noupdate -radix hexadecimal /board/EP/app/PIO/PIO_EP/EP_TX/up_wr_local_mem_addr_o
 add wave -noupdate /board/EP/app/PIO/PIO_EP/EP_TX/up_wr_req_i
+add wave -noupdate /board/EP/app/PIO/PIO_EP/EP_TX/cfg_bus_mstr_enable_i
 add wave -noupdate -divider inbound
 add wave -noupdate -radix unsigned /board/EP/app/PIO/PIO_EP/EP_MEM/inbound_fsm_inst/inbound_state
 add wave -noupdate -radix ascii /board/EP/app/PIO/PIO_EP/EP_MEM/inbound_fsm_inst/inbound_state_ascii
@@ -86,7 +87,7 @@ add wave -noupdate -divider cmd_process
 add wave -noupdate /board/EP/app/PIO/PIO_EP/EP_MEM/cmd_process_fsm_inst/cmd_type
 add wave -noupdate -radix hexadecimal /board/EP/app/PIO/PIO_EP/EP_MEM/cmd_process_fsm_inst/req_addr_o
 add wave -noupdate /board/EP/app/PIO/PIO_EP/EP_MEM/cmd_process_fsm_inst/state
-add wave -noupdate /board/EP/app/PIO/PIO_EP/EP_MEM/cmd_process_fsm_inst/state_next
+add wave -noupdate -radix ascii /board/EP/app/PIO/PIO_EP/EP_MEM/cmd_process_fsm_inst/cmd_process_state_ascii
 add wave -noupdate /board/EP/app/PIO/PIO_EP/EP_MEM/cmd_process_fsm_inst/txe_compl_done_i
 add wave -noupdate /board/EP/app/PIO/PIO_EP/EP_MEM/cmd_process_fsm_inst/up_wr_cmd_compl_o
 add wave -noupdate /board/EP/app/PIO/PIO_EP/EP_MEM/cmd_process_fsm_inst/us_cmd_fifo_dout_i
@@ -100,7 +101,7 @@ add wave -noupdate -divider rx_usrapp
 add wave -noupdate /board/RP/rx_usrapp/trn_clk
 add wave -noupdate /board/RP/rx_usrapp/trn_lnk_up_n
 add wave -noupdate /board/RP/rx_usrapp/trn_rbar_hit_n
-add wave -noupdate /board/RP/rx_usrapp/trn_rd
+add wave -noupdate -radix hexadecimal /board/RP/rx_usrapp/trn_rd
 add wave -noupdate /board/RP/rx_usrapp/trn_rdst_rdy_n
 add wave -noupdate /board/RP/rx_usrapp/trn_rdst_rdy_toggle_count
 add wave -noupdate /board/RP/rx_usrapp/trn_reof_n
@@ -115,8 +116,12 @@ add wave -noupdate /board/RP/rx_usrapp/trn_rsrc_rdy_n
 add wave -noupdate /board/RP/rx_usrapp/trn_rx_in_channel
 add wave -noupdate /board/RP/rx_usrapp/trn_rx_in_frame
 add wave -noupdate /board/RP/rx_usrapp/trn_rx_state
+add wave -noupdate /board/RP/rx_usrapp/trn_rdst_rdy_n
+add wave -noupdate /board/RP/rx_usrapp/trn_rsof_n
+add wave -noupdate /board/RP/rx_usrapp/trn_rsrc_dsc_n
+add wave -noupdate /board/RP/rx_usrapp/trn_rsrc_rdy_n
 TreeUpdate [SetDefaultTree]
-WaveRestoreCursors {{Cursor 1} {76391102000 fs} 0} {{Cursor 2} {40862651330 fs} 0}
+WaveRestoreCursors {{Cursor 1} {69417147000 fs} 0} {{Cursor 2} {40862651330 fs} 0}
 configure wave -namecolwidth 243
 configure wave -valuecolwidth 61
 configure wave -justifyvalue left
@@ -131,4 +136,4 @@ configure wave -griddelta 40
 configure wave -timeline 0
 configure wave -timelineunits ns
 update
-WaveRestoreZoom {76389869160 fs} {76392534840 fs}
+WaveRestoreZoom {69404777300 fs} {69429516700 fs}

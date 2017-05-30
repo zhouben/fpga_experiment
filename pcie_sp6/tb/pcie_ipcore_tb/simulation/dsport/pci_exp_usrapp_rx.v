@@ -151,6 +151,7 @@ always @(posedge trn_clk or negedge trn_reset_n) begin
               (trn_rsrc_rdy_n == 1'b0) &&
                (trn_rdst_rdy_n == 1'b0)  ) begin
 
+                   $display("[%t] RP begin to read data ...", $realtime);
           board.RP.com_usrapp.TSK_READ_DATA(0, RX_LOG, trn_rd, trn_rrem_n);
 
           trn_rx_state <= #(TCQ) TRN_RX_ACTIVE;

@@ -140,7 +140,6 @@ MY_EP_MEM_CTRL EP_MEM (
 
     .rx_np_ok(rx_np_ok),                 // O
 
-    .cmd_id_i             	(	             	),
     .req_compl_i          	(	from_rxe_req_compl          	),
     .req_compl_with_data_i	(	from_rxe_req_compl_with_data	),
     .to_rxe_compl_done_o  	(	to_rxe_compl_done  	),
