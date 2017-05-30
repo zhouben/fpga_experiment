@@ -194,7 +194,7 @@ reg mem_clk;
 reg [9:0]  mem_addr;
 wire [31:0] mem_dout;
 
-LOCAL_MEM	LOCAL_MEMEx01
+LOCAL_MEM_FAKE LOCAL_MEMEx01
 (
 	.clk 	(	mem_clk 	),
 	.we  	(	        	),

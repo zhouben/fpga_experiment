@@ -1,7 +1,7 @@
 ##############################################################
 #
 # Xilinx Core Generator version 14.7
-# Date: Sun May 14 03:24:10 2017
+# Date: Tue May 30 13:21:40 2017
 #
 ##############################################################
 #
@@ -22,7 +22,7 @@ SET asysymbol = true
 SET busformat = BusFormatAngleBracketNotRipped
 SET createndf = false
 SET designentry = Verilog
-SET device = xc6slx100t
+SET device = xc6slx45t
 SET devicefamily = spartan6
 SET flowvendor = Other
 SET formalverification = false
@@ -45,7 +45,7 @@ CSET bar0_64bit=false
 CSET bar0_enabled=true
 CSET bar0_prefetchable=false
 CSET bar0_scale=Bytes
-CSET bar0_size=256
+CSET bar0_size=128
 CSET bar0_type=Memory
 CSET bar1_64bit=false
 CSET bar1_enabled=false
@@ -119,13 +119,13 @@ CSET ext_pci_cfg_space=false
 CSET extended_tag_field=false
 CSET force_no_scrambling=false
 CSET gt_channel=Channel_0
-CSET gt_loc=X0Y1
+CSET gt_loc=X0Y0
 CSET legacy_interrupt=INTA
 CSET max_payload_size=512_bytes
 CSET multiple_message_capable=1_vector
 CSET override_low_latency=false
 CSET pci_cfg_space=false
-CSET perf_level=Good
+CSET perf_level=High
 CSET phantom_functions=No_function_number_bits_used
 CSET ref_clk_freq=100_MHz
 CSET revision_id=00
@@ -141,4 +141,4 @@ CSET xlnx_ref_board=None
 MISC pkg_timestamp=2013-10-13T18:02:40Z
 # END Extra information
 GENERATE
-# CRC: 10409199
+# CRC: 37a44eab

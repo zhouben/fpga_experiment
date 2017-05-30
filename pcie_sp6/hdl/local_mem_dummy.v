@@ -1,6 +1,6 @@
 `timescale 1ns/1ns
 
-module LOCAL_MEM(
+module LOCAL_MEM_FAKE(
     input               clk     ,    // input clk
     input               we      ,
     input  [9:0]        addr    ,

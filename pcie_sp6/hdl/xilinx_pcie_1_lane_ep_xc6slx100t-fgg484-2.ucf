@@ -48,7 +48,7 @@
 ##
 ##-----------------------------------------------------------------------------
 ## Project    : Spartan-6 Integrated Block for PCI Express
-## File       : xilinx_pcie_1_lane_ep_xc6slx100t-fgg484-2.ucf
+## File       : xilinx_pcie_1_lane_ep_xc6slx45t-fgg484-2.ucf
 ## Description: Example User Constraints File
 ##
 ## Use this file only with the device listed below.  Any other
@@ -60,7 +60,7 @@
 # Define Device, Package And Speed Grade
 ###############################################################################
 
-CONFIG PART = xc6slx100t-fgg484-2;
+CONFIG PART = xc6slx45t-fgg484-2;
 
 ###############################################################################
 # User Time Names / User Time Groups / Time Specs
@@ -86,6 +86,25 @@ CONFIG PART = xc6slx100t-fgg484-2;
 #
 
 #NET sys_reset_n      LOC = XXX  | IOSTANDARD = LVCMOS25 | PULLUP | NODELAY;
+NET sys_reset_n      LOC =H13  | IOSTANDARD = LVCMOS33 | PULLUP | NODELAY;
+# NET sys_reset_n      LOC =C3  | IOSTANDARD = LVCMOS33 | PULLUP | NODELAY;
+NET led_0      		LOC =D4  | IOSTANDARD = LVCMOS33; # P1A1_P LED1
+NET led_1      		LOC =D5  | IOSTANDARD = LVCMOS33; # P1A1_N LED2
+NET led_2      		LOC =B2  | IOSTANDARD = LVCMOS33; # P1A2_P LED3
+NET ld_1            LOC =D18 | IOSTANDARD = LVCMOS33; # P1C6_P
+NET ld_2            LOC =D19 | IOSTANDARD = LVCMOS33; # P1C6_N
+NET ld_3            LOC =B20 | IOSTANDARD = LVCMOS33; # P1C5_P
+NET ld_4            LOC =A20 | IOSTANDARD = LVCMOS33; # P1C5_N
+NET ld_5            LOC =C19 | IOSTANDARD = LVCMOS33; # P1C4_P
+NET ld_6            LOC =A19 | IOSTANDARD = LVCMOS33; # P1C4_N
+NET ld_7            LOC =B18 | IOSTANDARD = LVCMOS33; # P1C3_P
+NET ld_8            LOC =A18 | IOSTANDARD = LVCMOS33; # P1C3_N
+
+#NET led_3      		LOC =A2  | IOSTANDARD = LVCMOS33; # P1A2_N LED4
+#  NET sw_0            LOC =D3  | IOSTANDARD = LVCMOS33; # P1A0_N switch1
+#NET sw_1            LOC =C3  | IOSTANDARD = LVCMOS33; # P1A0_P switch2
+
+
 
 # SYS clock 100 or 125 MHz (input) signal. The sys_clk_p and sys_clk_n
 # signals are the PCI Express reference clock. Spartan-6 GTP
@@ -108,7 +127,7 @@ NET  sys_clk_p       LOC = A10;
 # information.
 #
 # PCIe Lane 0
-INST pcie_endpoint_i/GT_i/tile0_gtpa1_dual_wrapper_i/gtpa1_dual_i LOC = GTPA1_DUAL_X0Y1;
+INST pcie_endpoint_i/GT_i/tile0_gtpa1_dual_wrapper_i/gtpa1_dual_i LOC = GTPA1_DUAL_X0Y0;
 NET   pci_exp_txp  LOC = B6;
 NET   pci_exp_txn  LOC = A6;
 NET   pci_exp_rxp  LOC = D7;

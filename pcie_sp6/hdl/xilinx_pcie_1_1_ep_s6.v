@@ -67,6 +67,14 @@ module xilinx_pcie_1_1_ep_s6 #(
   input     sys_clk_n,
   input     sys_reset_n,
 
+  output    ld_1,
+  output    ld_2,
+  output    ld_3,
+  output    ld_4,
+  output    ld_5,
+  output    ld_6,
+  output    ld_7,
+  output    ld_8,
   output    led_0,
   output    led_1,
   output    led_2
@@ -157,6 +165,14 @@ module xilinx_pcie_1_1_ep_s6 #(
   wire                                        sys_clk_c;
   wire                                        sys_reset_n_c;
 
+  assign ld_1 = 1'b1;
+  assign ld_2 = 1'b1;
+  assign ld_3 = 1'b0;
+  assign ld_4 = 1'b0;
+  assign ld_5 = 1'b1;
+  assign ld_6 = 1'b1;
+  assign ld_7 = 1'b1;
+  assign ld_8 = 1'b1;
   //-------------------------------------------------------
   // Clock Input Buffer for differential system clock
   //-------------------------------------------------------
