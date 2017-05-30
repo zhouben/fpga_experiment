@@ -120,8 +120,11 @@ add wave -noupdate /board/RP/rx_usrapp/trn_rdst_rdy_n
 add wave -noupdate /board/RP/rx_usrapp/trn_rsof_n
 add wave -noupdate /board/RP/rx_usrapp/trn_rsrc_dsc_n
 add wave -noupdate /board/RP/rx_usrapp/trn_rsrc_rdy_n
+add wave -noupdate -radix hexadecimal /board/RP/com_tests/mem_addr
+add wave -noupdate /board/RP/com_tests/mem_clk
+add wave -noupdate -radix hexadecimal /board/RP/com_tests/mem_dout
 TreeUpdate [SetDefaultTree]
-WaveRestoreCursors {{Cursor 1} {69417147000 fs} 0} {{Cursor 2} {40862651330 fs} 0}
+WaveRestoreCursors {{Cursor 1} {69417147000 fs} 0} {{Cursor 2} {12449330 fs} 0}
 configure wave -namecolwidth 243
 configure wave -valuecolwidth 61
 configure wave -justifyvalue left
@@ -136,4 +139,4 @@ configure wave -griddelta 40
 configure wave -timeline 0
 configure wave -timelineunits ns
 update
-WaveRestoreZoom {69404777300 fs} {69429516700 fs}
+WaveRestoreZoom {0 fs} {24739400 fs}

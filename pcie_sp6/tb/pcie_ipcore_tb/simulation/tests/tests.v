@@ -79,7 +79,7 @@ task WriteMMIO;
     input [31:0] value;
 
     begin
-        $display("[%t] Write MMIO %8x @ %d", $realtime, value, offset);
+        $display("[%t] Write MMIO %8x@%3d", $realtime, value, offset);
         board.RP.tx_usrapp.DATA_STORE[0] = value[31:24];
         board.RP.tx_usrapp.DATA_STORE[1] = value[23:16];
         board.RP.tx_usrapp.DATA_STORE[2] = value[15:8 ];
@@ -103,7 +103,7 @@ task ReadMMIO;
     input [7:0] offset;
     input [31:0] expect_value;
     begin
-        $display("[%t] Read  MMIO register @ %d, expected %8x", $realtime,  offset, expect_value);
+        $display("[%t] Read  MMIO register @%3d, expected %8x", $realtime,  offset, expect_value);
         board.RP.tx_usrapp.P_READ_DATA = 32'hffff_ffff;
         board.RP.tx_usrapp.DATA_STORE[3] = expect_value[31:24];
         board.RP.tx_usrapp.DATA_STORE[2] = expect_value[23:16];
@@ -126,7 +126,7 @@ task ReadMMIO;
             board.RP.tx_usrapp.P_READ_DATA);
 
         end else begin
-            $display("[%t] : ReadMMIO PASSED --- Read Data: %x @ %4d successfully received",
+            $display("[%t] : ReadMMIO PASSED --- Read Data: %x@%4d successfully received",
             $realtime, board.RP.tx_usrapp.P_READ_DATA, offset);
         end
     end
@@ -190,15 +190,96 @@ task INITIATE_SINGLE_XFER;
 end
 endtask
 
-task pio_up_wr_test0;
-    integer expect_value;
+reg mem_clk;
+reg [9:0]  mem_addr;
+wire [31:0] mem_dout;
+
+LOCAL_MEM	LOCAL_MEMEx01
+(
+	.clk 	(	mem_clk 	),
+	.we  	(	        	),
+	.addr	(	mem_addr	),
+	.din 	(	        	),
+	.dout	(	mem_dout	)
+) ;
+
+/**
+* clean expect_memwr_payload by input parameter len.
+*/
+task tsk_zero_expected_data;
+    input [7:0] len; // in units of DWORD
+    integer i;
     begin
+        for(i = 0; i < len; i = i + 1)
+        begin
+            expect_memwr_payload[i * 4 + 0] = 0;
+            expect_memwr_payload[i * 4 + 1] = 0;
+            expect_memwr_payload[i * 4 + 2] = 0;
+            expect_memwr_payload[i * 4 + 3] = 0;
+        end
+    end
+endtask
+
+/**
+* initiate expect_memwr_payload with LOCAL_MEM module by input param len, in units of DWORD
+*/
+task tsk_init_expected_data;
+    input [7:0] len;  // in units of DWORD
+    integer i;
+    begin
+        mem_clk = 0;
+        fork
+            repeat (len * 2 + 4) #2 mem_clk = ~mem_clk;
+            begin
+                mem_addr = 0; @(posedge mem_clk);
+                i = 0;
+                for(i = 0; i < len; i = i + 1)
+                begin
+                    mem_addr = mem_addr + 1;
+                    @(posedge mem_clk);
+                    $display("[%t] : %1d mem_dout %8x", $realtime, i, mem_dout);
+                    expect_memwr_payload[i * 4 + 0] = mem_dout[31:24];
+                    expect_memwr_payload[i * 4 + 1] = mem_dout[23:16];
+                    expect_memwr_payload[i * 4 + 2] = mem_dout[15:8];
+                    expect_memwr_payload[i * 4 + 3] = mem_dout[7:0];
+                end
+            end
+        join
+    end
+endtask
+/**
+* expect 128 bytes from LOCAL_MEM module
+*
+* @return expect_status 1: success, 0: failed
+*/
+task tsk_check_upstream_wr32;
+    integer expect_status;
+    begin
+        $display("[%t] : begin to wait for MemWr32 ...", $realtime);
+
+        board.RP.com_usrapp.TSK_EXPECT_MEMWR(
+            0, 0, 0, 0,
+            10'd32, // length, in units of DWs
+            15'h1a0, // requester id
+            0,  // tag
+            4'b1111, 4'b1111, 
+            (32'h7698CA00 >> 2),
+            expect_status
+        );
+        $display("[%t] : end of waiting for MemWr32 status %s (%1d)", $realtime, (expect_status == 1) ? "PASSED" : "FAILED", expect_status);
+    end
+endtask
+
+task pio_up_wr_test0;
+    begin
+        tsk_zero_expected_data(32);
+        tsk_init_expected_data(32);
 
         /* This test performs a 32 bit write to a 32 bit Memory space and performs a read back */
-
         board.RP.tx_usrapp.TSK_SIMULATION_TIMEOUT(10050);
         board.RP.tx_usrapp.TSK_SYSTEM_INITIALIZATION;
         board.RP.tx_usrapp.TSK_BAR_INIT;
+
         /**
         * Direct Root Port to allow upstream traffic by enabling Mem, I/O and
         * BusMstr in the command register
@@ -231,28 +312,14 @@ task pio_up_wr_test0;
                         board.RP.tx_usrapp.DEFAULT_TAG = board.RP.tx_usrapp.DEFAULT_TAG + 1;
 
                         ReadMMIO(8'h10, 32'h7698CA00);
-                        //board.RP.tx_usrapp.TSK_TX_CLK_EAT(50);
                         board.RP.tx_usrapp.DEFAULT_TAG = board.RP.tx_usrapp.DEFAULT_TAG + 1;
 
                         /* write CMD to kick off upstream Wr32 transfer */
                         WriteMMIO(8'h0, 32'd1);
 
-                        $display("[%t] : begin to eat some time", $realtime);
-                        //board.RP.tx_usrapp.TSK_TX_CLK_EAT(1000);
                         board.RP.tx_usrapp.DEFAULT_TAG = board.RP.tx_usrapp.DEFAULT_TAG + 1;
-                        $display("[%t] : begin to wait for MemWr32 ...", $realtime);
-                        board.RP.com_usrapp.TSK_EXPECT_MEMWR(
-                            0, 0, 0, 0,
-                            10'd32, // length, in units of DWs
-                            15'h1a, // requester id
-                            0,  // tag
-                            4'b1111, 4'b1111, 
-                            (32'h7698CA00 >> 2),
-                            expect_value
-                        );
-                        $display("[%t] : end of waiting for MemWr32 ...", $realtime);
-                        $display("[%t] : P_READ_DATA %x, expect value %8x", $realtime, board.RP.tx_usrapp.P_READ_DATA, expect_value);
 
+                        tsk_check_upstream_wr32;
 
                         /* Event Memory Read 32 bit TLP */
                         /* Read State register, should be all 0.*/
