@@ -13,7 +13,7 @@ module INBOUND_FSM (
 
     input       [10:0]    rd_addr_i, /* read port */
     input       [3:0]     rd_be_i,
-    output reg  [31:0]    rd_data_o,
+    output      [31:0]    rd_data_o,
     input       [10:0]    wr_addr_i, /* write port */
     input       [7:0]     wr_be_i,
     input       [31:0]    wr_data_i,
@@ -70,10 +70,14 @@ wire        us_cmd_fifo_empty;
 wire        us_cmd_fifo_prog_full;
 reg [54:0]  req_d;
 wire [31:0] host_addr_to_write;
+wire [31:0] wr_data_le_i;
+reg  [31:0] rd_data_le_o;
+
+assign wr_data_le_i = {wr_data_i[7:0], wr_data_i[15:8], wr_data_i[23:16], wr_data_i[31:24]}; 
+assign rd_data_o = {rd_data_le_o[7:0], rd_data_le_o[15:8], rd_data_le_o[23:16], rd_data_le_o[31:24]};
 
 assign wr_busy_o = (inbound_state == WR_MEM_IDLE) ? 1'b0 : 1'b1;
 assign cmd_id = (cmd[0] ? 2'd0 : (cmd[1] ? 2'd1 : 2'd0));
-
 
 always @(*) begin
     case (inbound_state)
@@ -123,12 +127,12 @@ end
 
 always @(*) begin
     case (rd_addr_i[2:0])
-        3'b000 : rd_data_o = {30'b0, cmd};
-        3'b001 : rd_data_o = len;
-        3'b010 : rd_data_o = {30'b0, state};
-        3'b100 : rd_data_o = addr_0;
-        3'b110 : rd_data_o = addr_1;
-        default: rd_data_o = 32'd0;
+        3'b000 : rd_data_le_o = {30'b0, cmd};
+        3'b001 : rd_data_le_o = len;
+        3'b010 : rd_data_le_o = {30'b0, state};
+        3'b100 : rd_data_le_o = addr_0;
+        3'b110 : rd_data_le_o = addr_1;
+        default: rd_data_le_o = 32'd0;
     endcase
 end
 
@@ -193,9 +197,9 @@ always @(posedge clk) begin
         addr_1  <= 32'd0;
     end else if (inbound_state_next == WR_MEM_WRITING) begin
         case (wr_addr_i[2:0])
-            3'b001 : len    <= wr_data_i;
-            3'b100 : addr_0 <= wr_data_i;
-            3'b110 : addr_1 <= wr_data_i;
+            3'b001 : len    <= wr_data_le_i;
+            3'b100 : addr_0 <= wr_data_le_i;
+            3'b110 : addr_1 <= wr_data_le_i;
         endcase
     end
 end
@@ -217,9 +221,9 @@ always @(*) begin
                 2'b01 : begin
                     case (wr_addr_i[2:0])
                         3'b000 : begin
-                            if (|wr_data_i[1:0] && ((wr_data_i[1:0] & (~state )) != 0)) begin
+                            if (|wr_data_le_i[1:0] && ((wr_data_le_i[1:0] & (~state )) != 0)) begin
                                 inbound_state_next = (us_cmd_fifo_full_i) ? WR_MEM_PRE_ISSUE_CMD : WR_MEM_ISSUE_CMD;
-                                cmd_next = wr_data_i[1:0] & (~state);
+                                cmd_next = wr_data_le_i[1:0] & (~state);
                             end else begin
                                 inbound_state_next = inbound_state;
                             end

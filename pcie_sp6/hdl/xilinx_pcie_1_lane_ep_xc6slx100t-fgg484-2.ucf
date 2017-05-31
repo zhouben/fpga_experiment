@@ -75,7 +75,7 @@ CONFIG PART = xc6slx45t-fgg484-2;
 ###############################################################################
 
 #
-# SYS reset (input) signal.  The sys_reset_n signal should be
+# SYS reset (input) signal.  The sys_reset_n_i signal should be
 # obtained from the PCI Express interface if possible.  For
 # slot based form factors, a system reset signal is usually
 # present on the connector.  For cable based form factors, a
@@ -85,12 +85,15 @@ CONFIG PART = xc6slx45t-fgg484-2;
 # to suit your requirements and VCCO voltage banking rules.
 #
 
-#NET sys_reset_n      LOC = XXX  | IOSTANDARD = LVCMOS25 | PULLUP | NODELAY;
-NET sys_reset_n      LOC =H13  | IOSTANDARD = LVCMOS33 | PULLUP | NODELAY;
-# NET sys_reset_n      LOC =C3  | IOSTANDARD = LVCMOS33 | PULLUP | NODELAY;
+#NET sys_reset_n_i      LOC = XXX  | IOSTANDARD = LVCMOS25 | PULLUP | NODELAY;
+NET sys_reset_n_i      LOC =H13  | IOSTANDARD = LVCMOS33 | PULLUP | NODELAY;    # PERST
+# NET sys_reset_n_i      LOC =C3  | IOSTANDARD = LVCMOS33 | PULLUP | NODELAY;
 NET led_0      		LOC =D4  | IOSTANDARD = LVCMOS33; # P1A1_P LED1
 NET led_1      		LOC =D5  | IOSTANDARD = LVCMOS33; # P1A1_N LED2
 NET led_2      		LOC =B2  | IOSTANDARD = LVCMOS33; # P1A2_P LED3
+NET led_3      		LOC =A2  | IOSTANDARD = LVCMOS33; # P1A2_N LED4
+NET s_1             LOC =D3  | IOSTANDARD = LVCMOS33; # P1A0_N SW-1
+NET s_2             LOC =C3  | IOSTANDARD = LVCMOS33; # P1A0_P SW-2
 NET ld_1            LOC =D18 | IOSTANDARD = LVCMOS33; # P1C6_P
 NET ld_2            LOC =D19 | IOSTANDARD = LVCMOS33; # P1C6_N
 NET ld_3            LOC =B20 | IOSTANDARD = LVCMOS33; # P1C5_P
@@ -145,7 +148,8 @@ NET   pci_exp_rxn  LOC = C7;
 #
 # Ignore timing on asynchronous signals.
 #
-NET sys_reset_n TIG;
+#NET sys_reset_n_manual  TIG;
+NET sys_reset_n_perst   TIG;
 
 #
 # Timing requirements and related constraints.

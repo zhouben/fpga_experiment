@@ -80,10 +80,10 @@ task WriteMMIO;
 
     begin
         $display("[%t] Write MMIO %8x@%3d", $realtime, value, offset);
-        board.RP.tx_usrapp.DATA_STORE[0] = value[31:24];
-        board.RP.tx_usrapp.DATA_STORE[1] = value[23:16];
-        board.RP.tx_usrapp.DATA_STORE[2] = value[15:8 ];
-        board.RP.tx_usrapp.DATA_STORE[3] = value[ 7:0 ];
+        board.RP.tx_usrapp.DATA_STORE[3] = value[31:24];
+        board.RP.tx_usrapp.DATA_STORE[2] = value[23:16];
+        board.RP.tx_usrapp.DATA_STORE[1] = value[15:8 ];
+        board.RP.tx_usrapp.DATA_STORE[0] = value[ 7:0 ];
 
         board.RP.tx_usrapp.TSK_TX_MEMORY_WRITE_32(
             board.RP.tx_usrapp.DEFAULT_TAG,
@@ -105,10 +105,10 @@ task ReadMMIO;
     begin
         $display("[%t] Read  MMIO register @%3d, expected %8x", $realtime,  offset, expect_value);
         board.RP.tx_usrapp.P_READ_DATA = 32'hffff_ffff;
-        board.RP.tx_usrapp.DATA_STORE[3] = expect_value[31:24];
-        board.RP.tx_usrapp.DATA_STORE[2] = expect_value[23:16];
-        board.RP.tx_usrapp.DATA_STORE[1] = expect_value[15:8];
-        board.RP.tx_usrapp.DATA_STORE[0] = expect_value[7:0];
+        board.RP.tx_usrapp.DATA_STORE[0] = expect_value[31:24];
+        board.RP.tx_usrapp.DATA_STORE[1] = expect_value[23:16];
+        board.RP.tx_usrapp.DATA_STORE[2] = expect_value[15:8];
+        board.RP.tx_usrapp.DATA_STORE[3] = expect_value[7:0];
         fork
             board.RP.tx_usrapp.TSK_TX_MEMORY_READ_32(board.RP.tx_usrapp.DEFAULT_TAG,
                 board.RP.tx_usrapp.DEFAULT_TC, 10'd1,
