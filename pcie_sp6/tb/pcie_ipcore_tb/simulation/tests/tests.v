@@ -237,7 +237,6 @@ task tsk_init_expected_data;
                 begin
                     mem_addr = mem_addr + 1;
                     @(posedge mem_clk);
-                    $display("[%t] : %1d mem_dout %8x", $realtime, i, mem_dout);
                     expect_memwr_payload[i * 4 + 0] = mem_dout[31:24];
                     expect_memwr_payload[i * 4 + 1] = mem_dout[23:16];
                     expect_memwr_payload[i * 4 + 2] = mem_dout[15:8];

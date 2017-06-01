@@ -112,17 +112,21 @@ task tsk_rd_register;
         req_compl_i = 0;
         req_compl_with_data_i = 0;
         fork
-            while(to_rxe_compl_done_o !== 1) @(posedge clk);
+            begin
+                while(to_rxe_compl_done_o !== 1) @(posedge clk);
+                $display("[%8t] tsk_rd_register to_rxe_compl_done_o = %d\n", $realtime, to_rxe_compl_done_o);
+
+            end
             begin
                 while(us_cmd_fifo_wr_en_o !== 1) @(posedge clk);
                 if (INBOUND_FSMEx01.req_d != { req_tc_i, req_td_i, req_ep_i, req_attr_i, req_len_i, req_rid_i, req_tag_i, req_be_i, req_addr_i[5:0] } )
                     $display("[%8t] Read register FAILED: out %16x, expected %16x\n", $realtime, us_cmd_fifo_din_o, { req_tc_i, req_td_i, req_ep_i, req_attr_i, req_len_i, req_rid_i, req_tag_i, req_be_i, req_addr_i[7:0] });
                 else begin
-                    $display("[%8t] Read register PASSED\n", $realtime);
+                    $display("[%8t] Read register PASSED to_rxe_compl_done_o %d\n", $realtime, to_rxe_compl_done_o);
                 end
             end
         join
-
+        $display("[%8t] tsk_rd_register PASSED\n", $realtime);
     end
 endtask
 
@@ -145,10 +149,11 @@ task tsk_wr_cmd_register;
     integer cmd_bitmap;
 
     begin
+        $display("[%8t] tsk_wr_cmd_register enter\n", $realtime);
         wr_en_i = 1;
         wr_addr_i = 1;  // len register
         wr_be_i = 8'hFF;
-        wr_data_i = 7;  // 128 bytes
+        wr_data_i = 32'h07000000;  // 128 bytes
         @(posedge clk);
         wr_en_i = 0;
         @(posedge clk);
@@ -160,14 +165,14 @@ task tsk_wr_cmd_register;
             wr_en_i = 1;
             wr_addr_i = 4 + _i * 2; // ADDR0, ADDR1
             wr_be_i = 8'hFF;
-            wr_data_i = data[_i];
+            wr_data_i = {data[_i][7:0], data[_i][15:8], data[_i][23:16], data[_i][31:24]};
             @(posedge clk);
             wr_en_i = 0;
             wait(wr_busy_o == 1);
             while(wr_busy_o == 1) @(posedge clk);
         end
 
-        cmd_bitmap = 3;
+        cmd_bitmap = 32'h03000000;
         wr_en_i = 1;
         wr_be_i = 8'hFF;
         wr_addr_i = 0;
@@ -197,7 +202,7 @@ task tsk_wr_cmd_register;
                         str = "PASSED";
                         flag = 0;
                     end
-                    $display("[%8t] No.%2d Write CMD Register %8s complete. Data into FIFO: cmd_type %2d  len %2d  cmd_id %2d addr %8x, data[%1d] %8x\n", $realtime, _i, str, cmd_type, len, cmd_id, addr, _i, data[_i]);
+                    $display("[%8t] No.%2d Write CMD Register complete with %8s. Data at FIFO: cmd_type %2d (exp %2d)  len %2d (exp %2d)  cmd_id %2d (exp %2d) addr %8x, expected value data[%1d] %8x\n", $realtime, _i, str, cmd_type, `US_CMD_WR32_TYPE, len, 7, cmd_id, _i, addr, _i, data[_i]);
                     if (flag == 1) begin
                         #100 $finish(1);
                     end
