@@ -34,4 +34,4 @@ PCIe transfer experiment on MARS6 FPGA.
     1. Add uart receive and crc32 test. Receiving data by 115200,8N1 pass on FPGA platform
     1. Add python script to send data via UART.
     1. Send crc32 value to host once the magic number "STOP" being detected.
-
+1. test
